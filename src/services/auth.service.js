@@ -1,94 +1,55 @@
-const bcrypt  = require('bcryptjs');
-const jwt     = require('jsonwebtoken');
-const crypto  = require('crypto');
-const { User } = require('../models');
-const { jwtConfig, bcryptConfig } = require('../config/security');
+﻿// ─────────────────────────────────────────────────────────────
+// services/auth.service.js
+// ─────────────────────────────────────────────────────────────
 
-const generateTokens = (user) => {
-  const payload = { id: user.id, role: user.role };
-  const accessToken  = jwt.sign(payload, jwtConfig.secret,        { expiresIn: jwtConfig.expiresIn });
-  const refreshToken = jwt.sign(payload, jwtConfig.refreshSecret, { expiresIn: jwtConfig.refreshExpiresIn });
-  return { accessToken, refreshToken };
-};
+// TODO: register(data)
+//   - Vérifier que l'email n'existe pas déjà
+//   - Hasher le mot de passe avec bcrypt (saltRounds=12)
+//   - Créer l'utilisateur en base (isVerified=false)
+//   - Générer un OTP 6 chiffres, le hasher, l'enregistrer en UserOtp (expire 10min)
+//   - Envoyer l'OTP par email via mailer
+//   - Retourner l'utilisateur créé (sans password)
 
-const register = async ({ nom, prenom, email, password, role = 'client' }) => {
-  const existing = await User.findOne({ where: { email } });
-  if (existing) throw { status: 409, message: 'Cet email est déjà utilisé' };
+// TODO: verifyEmail(userId, code)
+//   - Récupérer l'OTP non utilisé de type 'email_verification' pour cet user
+//   - Vérifier que l'OTP n'est pas expiré
+//   - Comparer le code fourni avec le hash stocké
+//   - Marquer isVerified=true sur l'user et isUsed=true sur l'OTP
+//   - Retourner un message de succès
 
-  const hash = await bcrypt.hash(password, bcryptConfig.saltRounds);
-  const user  = await User.create({ nom, prenom, email, motDePasse: hash, role });
+// TODO: login(email, password)
+//   - Trouver l'user par email
+//   - Vérifier que isActive=true et isVerified=true
+//   - Comparer le password avec bcrypt.compare
+//   - Générer access token (JWT, expire 15min) et refresh token (expire 7j)
+//   - Sauvegarder le refresh token hashé en base (RefreshToken)
+//   - Retourner { accessToken, user }  — refresh token via cookie httpOnly
 
-  const tokens = generateTokens(user);
-  await user.update({ tokenRafraichissement: tokens.refreshToken });
+// TODO: refreshToken(token)
+//   - Trouver le RefreshToken en base (non expiré)
+//   - Vérifier la signature JWT avec JWT_REFRESH_SECRET
+//   - Générer un nouvel access token
+//   - Retourner { accessToken }
 
-  return { user: sanitize(user), ...tokens };
-};
+// TODO: logout(userId, token)
+//   - Supprimer le RefreshToken correspondant en base
+//   - Retourner un message de succès
 
-const login = async ({ email, password }) => {
-  const user = await User.findOne({ where: { email } });
-  if (!user) throw { status: 401, message: 'Email ou mot de passe incorrect' };
-  if (!user.estActif) throw { status: 403, message: 'Compte désactivé' };
+// TODO: forgotPassword(email)
+//   - Trouver l'user par email (ne pas révéler si inexistant)
+//   - Générer un OTP de type 'reset_password', le hasher, le stocker
+//   - Envoyer l'OTP par email
+//   - Retourner un message générique
 
-  const valid = await bcrypt.compare(password, user.motDePasse);
-  if (!valid) throw { status: 401, message: 'Email ou mot de passe incorrect' };
+// TODO: resetPassword(userId, code, newPassword)
+//   - Récupérer l'OTP non utilisé de type 'reset_password'
+//   - Vérifier expiration et correspondance du code
+//   - Hasher le nouveau mot de passe et mettre à jour l'user
+//   - Marquer l'OTP isUsed=true
+//   - Invalider tous les refresh tokens de cet user
 
-  const tokens = generateTokens(user);
-  await user.update({ tokenRafraichissement: tokens.refreshToken });
-
-  return { user: sanitize(user), ...tokens };
-};
-
-const refreshToken = async (token) => {
-  if (!token) throw { status: 401, message: 'Refresh token manquant' };
-  try {
-    const decoded = jwt.verify(token, jwtConfig.refreshSecret);
-    const user    = await User.findByPk(decoded.id);
-    if (!user || user.tokenRafraichissement !== token) throw new Error();
-    if (!user.estActif) throw { status: 403, message: 'Compte désactivé' };
-
-    const tokens = generateTokens(user);
-    await user.update({ tokenRafraichissement: tokens.refreshToken });
-    return tokens;
-  } catch (err) {
-    if (err.status) throw err;
-    throw { status: 401, message: 'Refresh token invalide ou expiré' };
-  }
-};
-
-const logout = async (userId) => {
-  await User.update({ tokenRafraichissement: null }, { where: { id: userId } });
-};
-
-const forgotPassword = async (email) => {
-  const user = await User.findOne({ where: { email } });
-  if (!user) return;
-
-  const token   = crypto.randomBytes(32).toString('hex');
-  const expires = new Date(Date.now() + 60 * 60 * 1000);
-  await user.update({ tokenReinitialisation: token, expirationReinitialisation: expires });
-
-  // TODO: envoyer l'email avec le lien de réinitialisation
-  return token;
-};
-
-const resetPassword = async ({ token, password }) => {
-  const user = await User.findOne({ where: { tokenReinitialisation: token } });
-  if (!user || !user.expirationReinitialisation || user.expirationReinitialisation < new Date()) {
-    throw { status: 400, message: 'Token invalide ou expiré' };
-  }
-
-  const hash = await bcrypt.hash(password, bcryptConfig.saltRounds);
-  await user.update({
-    motDePasse: hash,
-    tokenReinitialisation: null,
-    expirationReinitialisation: null,
-    tokenRafraichissement: null,
-  });
-};
-
-const sanitize = (user) => {
-  const { motDePasse, tokenRafraichissement, tokenReinitialisation, expirationReinitialisation, ...safe } = user.toJSON();
-  return safe;
-};
-
-module.exports = { register, login, refreshToken, logout, forgotPassword, resetPassword };
+// TODO: changePassword(userId, oldPassword, newPassword)
+//   - Récupérer l'user
+//   - Vérifier que oldPassword correspond au hash actuel
+//   - Hasher newPassword et mettre à jour
+//   - Invalider tous les refresh tokens

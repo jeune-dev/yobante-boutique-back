@@ -1,24 +1,13 @@
-const jwt = require('jsonwebtoken');
-const { jwtConfig } = require('../config/security');
-const { User } = require('../models');
+﻿// ─────────────────────────────────────────────────────────────
+// middlewares/auth.middleware.js
+// ─────────────────────────────────────────────────────────────
 
-const authenticate = async (req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Token manquant' });
-  }
-  const token = header.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, jwtConfig.secret);
-    const user = await User.findByPk(decoded.id, {
-      attributes: { exclude: ['motDePasse', 'tokenRafraichissement', 'tokenReinitialisation', 'expirationReinitialisation'] },
-    });
-    if (!user) return res.status(401).json({ message: 'Utilisateur introuvable' });
-    req.user = user;
-    next();
-  } catch {
-    return res.status(401).json({ message: 'Token invalide ou expiré' });
-  }
-};
-
-module.exports = { authenticate };
+// TODO: auth(req, res, next)
+//   - Extraire le Bearer token depuis req.headers.authorization
+//   - Lever une erreur 401 si absent
+//   - Vérifier et décoder le token avec jwt.verify(token, JWT_SECRET)
+//   - Lever une erreur 401 si token invalide ou expiré
+//   - Récupérer l'user en base depuis le payload (id)
+//   - Vérifier que l'user existe et isActive=true
+//   - Attacher l'user à req.user
+//   - Appeler next()

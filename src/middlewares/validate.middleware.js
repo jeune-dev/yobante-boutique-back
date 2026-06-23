@@ -1,14 +1,10 @@
-const { validationResult } = require('express-validator');
+﻿// ─────────────────────────────────────────────────────────────
+// middlewares/validate.middleware.js
+// ─────────────────────────────────────────────────────────────
 
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(422).json({
-      message: 'Données invalides',
-      errors: errors.array().map(e => ({ champ: e.path, message: e.msg })),
-    });
-  }
-  next();
-};
-
-module.exports = { validate };
+// TODO: validate(schema, target='body')
+//   - Retourner une fonction middleware (req, res, next)
+//   - Valider req[target] contre le schéma Joi fourni
+//   - Options Joi : { abortEarly: false, stripUnknown: true }
+//   - Si erreur : retourner 400 avec la liste des messages d'erreur
+//   - Si succès : remplacer req[target] par la valeur validée et appeler next()

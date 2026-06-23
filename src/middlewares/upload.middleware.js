@@ -1,21 +1,19 @@
-const multer = require('multer');
+﻿// ─────────────────────────────────────────────────────────────
+// middlewares/upload.middleware.js
+// ─────────────────────────────────────────────────────────────
 
-const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
+// TODO: importer multer
+// TODO: importer file-type pour valider les vrais MIME types
+// TODO: importer uploadConfig depuis ../config/security.js
 
-const storage = multer.memoryStorage();
+// TODO: Configurer le stockage mémoire (multer.memoryStorage())
+//   - Ne pas écrire sur le disque, les fichiers iront sur Cloudinary
 
-const fileFilter = (_req, file, cb) => {
-  if (ALLOWED_MIME.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Format non supporté. Utilisez JPEG, PNG ou WebP.'), false);
-  }
-};
+// TODO: Filtre de fichiers (fileFilter)
+//   - Lire les magic bytes du buffer pour obtenir le vrai type MIME
+//   - Accepter uniquement : image/jpeg, image/png, image/webp
+//   - Rejeter avec une erreur explicite sinon
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter,
-});
+// TODO: upload = multer({ storage, fileFilter, limits: { fileSize: uploadConfig.maxFileSize } })
 
-module.exports = upload;
+// module.exports = { upload }

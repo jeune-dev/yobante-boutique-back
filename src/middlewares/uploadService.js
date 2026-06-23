@@ -1,19 +1,14 @@
-const { Readable } = require('stream');
-const cloudinary = require('../config/cloudinary');
+﻿// ─────────────────────────────────────────────────────────────
+// middlewares/uploadService.js — Service d'upload Cloudinary
+// ─────────────────────────────────────────────────────────────
 
-const uploadToCloudinary = (buffer, folder = 'yobante') => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream({ folder }, (err, result) => {
-      if (err) return reject(err);
-      resolve(result);
-    });
-    const readable = new Readable();
-    readable.push(buffer);
-    readable.push(null);
-    readable.pipe(stream);
-  });
-};
+// TODO: importer cloudinary depuis ../config/cloudinary.js
 
-const deleteFromCloudinary = (publicId) => cloudinary.uploader.destroy(publicId);
+// TODO: uploadToCloudinary(buffer, options)
+//   - options : { folder, publicId, transformation }
+//   - Uploader le buffer sur Cloudinary via upload_stream
+//   - Retourner { url, publicId }
 
-module.exports = { uploadToCloudinary, deleteFromCloudinary };
+// TODO: deleteFromCloudinary(publicId)
+//   - Supprimer une ressource Cloudinary par son publicId
+//   - Retourner le résultat

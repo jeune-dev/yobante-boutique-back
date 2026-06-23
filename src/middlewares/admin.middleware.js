@@ -1,15 +1,9 @@
-const isAdmin = (req, res, next) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: 'Accès réservé aux administrateurs' });
-  }
-  next();
-};
+﻿// ─────────────────────────────────────────────────────────────
+// middlewares/admin.middleware.js
+// ─────────────────────────────────────────────────────────────
 
-const isVendeur = (req, res, next) => {
-  if (!['admin', 'vendeur'].includes(req.user?.role)) {
-    return res.status(403).json({ message: 'Accès réservé aux vendeurs' });
-  }
-  next();
-};
-
-module.exports = { isAdmin, isVendeur };
+// TODO: admin(req, res, next)
+//   - Vérifier que req.user existe (auth.middleware doit être appelé avant)
+//   - Vérifier que req.user.role === 'admin'
+//   - Si non : retourner 403 avec message 'Accès refusé'
+//   - Si oui : appeler next()
