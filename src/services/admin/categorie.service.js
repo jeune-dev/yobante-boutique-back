@@ -1,76 +1,34 @@
-﻿const { Op } = require('sequelize');
-const slugify = require('slugify');
-const cloudinary = require('../../config/cloudinary');
-const { Categorie } = require('../../models');
-const { paginateResult } = require('../../utils/paginate');
+﻿// ─────────────────────────────────────────────────────────────
+// services/admin/categorie.service.js
+// ─────────────────────────────────────────────────────────────
 
-async function createCategorie(data, file) {
-  const baseSlug = slugify(data.nom || 'categorie', { lower: true, strict: true }).slice(0, 200);
-  let slug = baseSlug;
-  let i = 1;
-  while (await Categorie.findOne({ where: { slug } })) {
-    slug = `${baseSlug}-${i++}`;
-  }
+// TODO: createCategorie(data)
+//   - Générer un slug unique depuis le nom
+//   - Si parentId fourni, vérifier que la catégorie parente existe
+//   - Créer la catégorie en base
+//   - Retourner la catégorie créée
 
-  let image = null;
-  if (file && file.buffer) {
-    const uploaded = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream({ folder: 'yobante/categories' }, (err, res) => (err ? reject(err) : resolve(res)));
-      require('streamifier').createReadStream(file.buffer).pipe(stream);
-    });
-    image = uploaded.secure_url;
-  }
+// TODO: updateCategorie(id, data)
+//   - Vérifier que la catégorie existe
+//   - Si le nom change, regénérer le slug
+//   - Mettre à jour les champs fournis
+//   - Retourner la catégorie mise à jour
 
-  const categorie = await Categorie.create({ nom: data.nom, slug, description: data.description || null, image, parentId: data.parentId || null });
-  return categorie;
-}
+// TODO: deleteCategorie(id)
+//   - Vérifier que la catégorie existe
+//   - Vérifier qu'aucun produit actif n'utilise cette catégorie
+//   - Si des sous-catégories existent, les désactiver ou les remonter
+//   - Supprimer ou désactiver la catégorie
 
-async function updateCategorie(id, data, file) {
-  const categorie = await Categorie.findByPk(id);
-  if (!categorie) throw Object.assign(new Error('Catégorie introuvable'), { status: 404 });
-  if (data.nom && data.nom !== categorie.nom) {
-    const baseSlug = slugify(data.nom, { lower: true, strict: true }).slice(0, 200);
-    let slug = baseSlug;
-    let i = 1;
-    while (await Categorie.findOne({ where: { slug, id: { [Op.ne]: id } } })) {
-      slug = `${baseSlug}-${i++}`;
-    }
-    categorie.slug = slug;
-    categorie.nom = data.nom;
-  }
-  if (data.description !== undefined) categorie.description = data.description;
-  if (data.parentId !== undefined) categorie.parentId = data.parentId;
+// TODO: getAllCategories()
+//   - Récupérer toutes les catégories avec leurs sous-catégories (include self-join)
+//   - Retourner l'arbre de catégories
 
-  if (file && file.buffer) {
-    const uploaded = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream({ folder: 'yobante/categories' }, (err, res) => (err ? reject(err) : resolve(res)));
-      require('streamifier').createReadStream(file.buffer).pipe(stream);
-    });
-    categorie.image = uploaded.secure_url;
-  }
+// TODO: getCategorieById(id)
+//   - Trouver la catégorie avec ses produits actifs
+//   - Lever une erreur 404 si non trouvée
 
-  await categorie.save();
-  return categorie;
-}
-
-async function deleteCategorie(id) {
-  const categorie = await Categorie.findByPk(id);
-  if (!categorie) throw Object.assign(new Error('Catégorie introuvable'), { status: 404 });
-  categorie.isActive = false;
-  await categorie.save();
-  return { message: 'Catégorie désactivée' };
-}
-
-async function getAllCategories(pagination) {
-  const { page, limit, offset } = pagination;
-  const { rows, count } = await Categorie.findAndCountAll({ order: [['createdAt', 'DESC']], limit, offset });
-  return { rows, count, totalPages: paginateResult(count, page, limit).totalPages };
-}
-
-async function getCategorieById(id) {
-  const categorie = await Categorie.findByPk(id);
-  if (!categorie) throw Object.assign(new Error('Catégorie introuvable'), { status: 404 });
-  return categorie;
-}
-
-module.exports = { createCategorie, updateCategorie, deleteCategorie, getAllCategories, getCategorieById };
+// TODO: reorderCategories(order)
+//   - order : tableau [ { id, position } ]
+//   - Mettre à jour la position de chaque catégorie
+//   - Retourner un message de succès

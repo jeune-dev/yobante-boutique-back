@@ -1,17 +1,9 @@
-﻿function success(res, data = null, message = 'Succès', statusCode = 200) {
-  return res.status(statusCode).json({
-    success: true,
-    message,
-    data,
-  });
-}
+﻿// ─────────────────────────────────────────────────────────────
+// utils/formatResponse.js — Helpers de réponse standardisée
+// ─────────────────────────────────────────────────────────────
 
-function error(res, message = 'Erreur', statusCode = 400, errors = null) {
-  return res.status(statusCode).json({
-    success: false,
-    message,
-    errors,
-  });
-}
+// TODO: success(res, data, message='Succès', statusCode=200)
+//   - res.status(statusCode).json({ success: true, message, data })
 
-module.exports = { success, error };
+// TODO: error(res, message='Erreur', statusCode=400, errors=null)
+//   - res.status(statusCode).json({ success: false, message, errors })

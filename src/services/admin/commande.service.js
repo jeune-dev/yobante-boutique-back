@@ -1,55 +1,52 @@
-﻿const { Op } = require('sequelize');
-const { Commande, CommandeItem, User, Paiement, Adresse, Produit } = require('../../models');
-const { paginateResult } = require('../../utils/paginate');
+﻿// ─────────────────────────────────────────────────────────────
+// services/admin/commande.service.js
+// ─────────────────────────────────────────────────────────────
 
-async function getAllCommandes(filters = {}, pagination) {
-  const where = {};
-  if (filters.statut) where.statut = filters.statut;
-  if (filters.userId) where.userId = filters.userId;
-  if (filters.reference) where.reference = { [Op.iLike]: `%${filters.reference}%` };
-  if (filters.dateFrom || filters.dateTo) where.createdAt = {};
-  if (filters.dateFrom) where.createdAt[Op.gte] = new Date(filters.dateFrom);
-  if (filters.dateTo) where.createdAt[Op.lte] = new Date(filters.dateTo);
+// TODO: getAllCommandes(filters, pagination)
+//   - Filtres : statut, userId, dateDebut, dateFin, reference
+//   - Include User et CommandeItems avec Produit
+//   - Pagination avec paginate.js
+//   - Retourner { rows, count, totalPages }
 
-  const { page, limit, offset } = pagination;
-  const { rows, count } = await Commande.findAndCountAll({
-    where,
-    order: [['createdAt', 'DESC']],
-    limit,
-    offset,
-    include: [
-      { model: User, attributes: ['id', 'nom', 'prenom', 'email'] },
-      { model: CommandeItem, include: [{ model: Produit }] },
-      { model: Paiement },
-    ],
-  });
+// TODO: getCommandeById(id)
+//   - Include User, Adresse, CommandeItem(+Produit), Paiement
+//   - Lever une erreur 404 si non trouvée
 
-  return { rows, count, totalPages: paginateResult(count, page, limit).totalPages };
-}
+// TODO: validerCommande(id, noteAdmin)
+//   - Vérifier que la commande est en statut 'en_attente'
+//   - Passer à 'validee', sauvegarder noteAdmin si fournie
+//   - Envoyer email de confirmation au client
+//   - Retourner la commande mise à jour
 
-async function getCommandeById(id) {
-  const commande = await Commande.findByPk(id, {
-    include: [
-      { model: User, attributes: ['id', 'nom', 'prenom', 'email'] },
-      { model: CommandeItem, include: [{ model: Produit }] },
-      { model: Paiement },
-    ],
-  });
-  if (!commande) {
-    const err = new Error('Commande introuvable');
-    err.status = 404;
-    throw err;
-  }
-  return commande;
-}
+// TODO: rejeterCommande(id, raison)
+//   - Vérifier que la commande n'est pas déjà livrée ou annulée
+//   - Passer à 'annulee', sauvegarder la raison dans noteAdmin
+//   - Remettre le stock des produits commandés
+//   - Envoyer email d'annulation au client
+//   - Retourner la commande mise à jour
 
-async function updateStatut(id, statut, noteAdmin) {
-  const commande = await Commande.findByPk(id);
-  if (!commande) throw Object.assign(new Error('Commande introuvable'), { status: 404 });
-  commande.statut = statut;
-  if (noteAdmin !== undefined) commande.noteAdmin = noteAdmin;
-  await commande.save();
-  return commande;
-}
+// TODO: mettreEnPreparation(id)
+//   - Vérifier statut = 'validee'
+//   - Passer à 'en_preparation'
+//   - Notifier le client
+//   - Retourner la commande mise à jour
 
-module.exports = { getAllCommandes, getCommandeById, updateStatut };
+// TODO: marquerExpediee(id, trackingInfo)
+//   - Vérifier statut = 'en_preparation'
+//   - Passer à 'expediee', enregistrer les infos de suivi dans noteAdmin
+//   - Envoyer email avec infos de suivi au client
+//   - Retourner la commande mise à jour
+
+// TODO: marquerLivree(id)
+//   - Vérifier statut = 'expediee'
+//   - Passer à 'livree'
+//   - Retourner la commande mise à jour
+
+// TODO: getCommandesParClient(userId)
+//   - Trouver toutes les commandes d'un client
+//   - Retourner la liste avec items
+
+// TODO: exportCommandes(filters, format='csv')
+//   - Appliquer les filtres
+//   - Générer CSV/Excel
+//   - Retourner le buffer du fichier

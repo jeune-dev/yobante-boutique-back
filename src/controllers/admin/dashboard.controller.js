@@ -1,43 +1,22 @@
-﻿const dashboardService = require('../../services/admin/dashboard.service');
-const { success } = require('../../utils/formatResponse');
+﻿// ─────────────────────────────────────────────────────────────
+// controllers/admin/dashboard.controller.js
+// ─────────────────────────────────────────────────────────────
+// const dashboardService = require('../../services/admin/dashboard.service')
 
-async function getStats(req, res, next) {
-  try {
-    const data = await dashboardService.getOverview();
-    return success(res, data, 'Dashboard stats');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: getStats(req, res, next)
+//   - Appeler dashboardService.getStatsGlobales()
+//   - Retourner 200 + les stats
 
-async function getRevenus(req, res, next) {
-  try {
-    const data = await dashboardService.getRevenus();
-    return success(res, data, 'Revenus');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: getRevenus(req, res, next)
+//   - Récupérer req.query.annee
+//   - Appeler dashboardService.getRevenusParMois(annee)
+//   - Retourner 200 + les revenus
 
-async function getProduitsPlusVendus(req, res, next) {
-  try {
-    const limit = Number(req.query.limit) || 10;
-    const data = await dashboardService.getProduitsPlusVendus(limit);
-    return success(res, data, 'Produits les plus vendus');
-  } catch (err) {
-    console.error('getProduitsPlusVendus ERROR:', err.message);
-    next(err);
-  }
-}
+// TODO: getProduitsPlusVendus(req, res, next)
+//   - Récupérer req.query.limit
+//   - Appeler dashboardService.getProduitsPlusVendus(limit)
+//   - Retourner 200 + la liste
 
-async function getStockAlertes(req, res, next) {
-  try {
-    const threshold = Number(req.query.threshold) || 5;
-    const data = await dashboardService.getStockAlertes(threshold);
-    return success(res, data, 'Alertes stock');
-  } catch (err) {
-    next(err);
-  }
-}
-
-module.exports = { getStats, getRevenus, getProduitsPlusVendus, getStockAlertes };
+// TODO: getStockAlertes(req, res, next)
+//   - Appeler dashboardService.getStockAlertes()
+//   - Retourner 200 + la liste des produits en alerte

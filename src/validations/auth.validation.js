@@ -1,45 +1,12 @@
-﻿const Joi = require('joi');
+﻿// ─────────────────────────────────────────────────────────────
+// validations/auth.validation.js — Schémas Joi pour l'auth
+// ─────────────────────────────────────────────────────────────
 
-const registerSchema = Joi.object({
-  nom: Joi.string().trim().required(),
-  prenom: Joi.string().trim().required(),
-  email: Joi.string().email().required(),
-  password: Joi.string().min(8).pattern(/(?=.*[A-Z])(?=.*[0-9])/).required(),
-  telephone: Joi.string().trim().optional().allow('', null),
-});
+// TODO: registerSchema — nom, prenom, email (email()), password (min 8, majuscule, chiffre), telephone
+// TODO: verifyEmailSchema — userId ou email, code (6 chiffres)
+// TODO: loginSchema — email, password
+// TODO: forgotPasswordSchema — email
+// TODO: resetPasswordSchema — userId ou email, code, newPassword
+// TODO: changePasswordSchema — oldPassword, newPassword
 
-const verifyEmailSchema = Joi.object({
-  userId: Joi.number().integer().optional(),
-  email: Joi.string().email().optional(),
-  code: Joi.string().length(6).required(),
-}).xor('userId', 'email');
-
-const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().required(),
-});
-
-const forgotPasswordSchema = Joi.object({
-  email: Joi.string().email().required(),
-});
-
-const resetPasswordSchema = Joi.object({
-  userId: Joi.number().integer().optional(),
-  email: Joi.string().email().optional(),
-  code: Joi.string().length(6).required(),
-  newPassword: Joi.string().min(8).pattern(/(?=.*[A-Z])(?=.*[0-9])/).required(),
-}).xor('userId', 'email');
-
-const changePasswordSchema = Joi.object({
-  oldPassword: Joi.string().required(),
-  newPassword: Joi.string().min(8).pattern(/(?=.*[A-Z])(?=.*[0-9])/).required(),
-});
-
-module.exports = {
-  registerSchema,
-  verifyEmailSchema,
-  loginSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-  changePasswordSchema,
-};
+// module.exports = { registerSchema, verifyEmailSchema, loginSchema, ... }

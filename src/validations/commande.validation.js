@@ -1,27 +1,10 @@
-﻿const Joi = require('joi');
+﻿// ─────────────────────────────────────────────────────────────
+// validations/commande.validation.js — Schémas Joi pour les commandes
+// ─────────────────────────────────────────────────────────────
 
-const passerCommandeSchema = Joi.object({
-  adresseId: Joi.number().integer().required(),
-  methodePaiement: Joi.string().valid('wave', 'orange_money', 'carte', 'cash_livraison').required(),
-  note: Joi.string().max(500).optional().allow('', null),
-});
+// TODO: passerCommandeSchema — adresseId (requis, integer), note (string optionnel, max 500)
+// TODO: ajouterPanierSchema  — produitId (requis), quantite (integer, min 1, max 99)
+// TODO: modifierPanierSchema — quantite (integer, min 0, max 99)
+// TODO: rejeterCommandeSchema — raison (string, requis, max 500)
 
-const ajouterPanierSchema = Joi.object({
-  produitId: Joi.number().integer().required(),
-  quantite: Joi.number().integer().min(1).max(99).required(),
-});
-
-const modifierPanierSchema = Joi.object({
-  quantite: Joi.number().integer().min(0).max(99).required(),
-});
-
-const rejeterCommandeSchema = Joi.object({
-  raison: Joi.string().max(500).required(),
-});
-
-module.exports = {
-  passerCommandeSchema,
-  ajouterPanierSchema,
-  modifierPanierSchema,
-  rejeterCommandeSchema,
-};
+// module.exports = { passerCommandeSchema, ajouterPanierSchema, ... }

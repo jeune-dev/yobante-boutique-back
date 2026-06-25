@@ -1,57 +1,34 @@
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const { rateLimit } = require('./middlewares/rateLimit.middleware');
-const { corsConfig } = require('./config/security');
-const errorMiddleware = require('./middlewares/error.middleware');
-const authRoutes = require('./routes/auth.route');
-const adminCategorieRoutes = require('./routes/admin/categorie.route');
-const adminAvisRoutes = require('./routes/admin/avis.route');
-const adminCommandeRoutes = require('./routes/admin/commande.route');
-const adminDashboardRoutes = require('./routes/admin/dashboard.route');
-const adminPaiementRoutes = require('./routes/admin/paiement.route');
-const adminProduitRoutes = require('./routes/admin/produit.route');
-const adminUserRoutes = require('./routes/admin/user.route');
-const clientCommandeRoutes = require('./routes/client/commande.route');
-const clientPanierRoutes = require('./routes/client/panier.route');
-const clientProduitRoutes = require('./routes/client/produit.route');
-const clientProfilRoutes = require('./routes/client/profil.route');
-const clientAvisRoutes = require('./routes/client/avis.route');
-const clientCategorieRoutes = require('./routes/client/categorie.route');
-const paiementRoutes = require('./routes/paiement.route');
+// ─────────────────────────────────────────────────────────────
+// app.js — Configuration Express
+// ─────────────────────────────────────────────────────────────
 
-const app = express();
+// TODO: importer express
+// TODO: importer helmet (sécurité headers HTTP)
+// TODO: importer cors avec corsConfig depuis config/security.js
+// TODO: importer express-rate-limit avec rateLimitConfig
+// TODO: importer morgan ou winston logger
+// TODO: importer cookie-parser
 
-app.use(helmet());
-app.use(cors(corsConfig));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(rateLimit);
+// TODO: importer les routes auth
+// TODO: importer les routes admin
+// TODO: importer les routes client
 
-app.use('/api/auth', authRoutes);
-app.use('/api/admin/categories', adminCategorieRoutes);
-app.use('/api/admin/avis', adminAvisRoutes);
-app.use('/api/admin/commandes', adminCommandeRoutes);
-app.use('/api/admin/dashboard', adminDashboardRoutes);
-app.use('/api/admin/paiements', adminPaiementRoutes);
-app.use('/api/admin/produits', adminProduitRoutes);
-app.use('/api/admin/users', adminUserRoutes);
-app.use('/api/client/commandes', clientCommandeRoutes);
-app.use('/api/client/panier', clientPanierRoutes);
-app.use('/api/client/produits', clientProduitRoutes);
-app.use('/api/client/profil', clientProfilRoutes);
-app.use('/api/client/avis', clientAvisRoutes);
-app.use('/api/client/categories', clientCategorieRoutes);
-app.use('/api/paiement', paiementRoutes);
+// TODO: importer le middleware global d'erreurs (error.middleware.js)
 
-app.use((req, res, next) => {
-  const error = new Error('Ressource non trouvée');
-  error.status = 404;
-  next(error);
-});
+// TODO: initialiser app = express()
 
-app.use(errorMiddleware);
+// TODO: appliquer helmet()
+// TODO: appliquer cors(corsConfig)
+// TODO: appliquer express.json() et express.urlencoded()
+// TODO: appliquer cookie-parser
+// TODO: appliquer le rate limit global
 
-module.exports = app;
+// TODO: monter les routes
+//   app.use('/api/auth', authRouter)
+//   app.use('/api/admin', adminRouter)
+//   app.use('/api/client', clientRouter)
+
+// TODO: route 404 pour les endpoints non définis
+// TODO: appliquer le middleware global d'erreurs en dernier
+
+// module.exports = app

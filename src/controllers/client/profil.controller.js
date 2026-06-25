@@ -1,85 +1,37 @@
-﻿const profilService = require('../../services/client/profil.service');
-const { success } = require('../../utils/formatResponse');
+﻿// ─────────────────────────────────────────────────────────────
+// controllers/client/profil.controller.js
+// ─────────────────────────────────────────────────────────────
+// const profilService = require('../../services/client/profil.service')
 
-async function get(req, res, next) {
-  try {
-    const profil = await profilService.getProfil(req.user.id);
-    return success(res, profil, 'Profil récupéré');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: get(req, res, next)
+//   - Appeler profilService.getProfil(req.user.id)
+//   - Retourner 200 + profil
 
-async function update(req, res, next) {
-  try {
-    const profil = await profilService.updateProfil(req.user.id, req.body);
-    return success(res, profil, 'Profil mis à jour');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: update(req, res, next)
+//   - Récupérer req.body (nom, prenom, telephone)
+//   - Appeler profilService.updateProfil(req.user.id, data)
+//   - Retourner 200 + profil mis à jour
 
-async function updateAvatar(req, res, next) {
-  try {
-    const result = await profilService.updateAvatar(req.user.id, req.file);
-    return success(res, result, 'Avatar mis à jour');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: updateAvatar(req, res, next)
+//   - Appeler profilService.updateAvatar(req.user.id, req.file)
+//   - Retourner 200 + { avatarUrl }
 
-async function getAdresses(req, res, next) {
-  try {
-    const adresses = await profilService.getAdresses(req.user.id);
-    return success(res, adresses, 'Adresses récupérées');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: getAdresses(req, res, next)
+//   - Appeler profilService.getAdresses(req.user.id)
+//   - Retourner 200 + liste adresses
 
-async function ajouterAdresse(req, res, next) {
-  try {
-    const adresse = await profilService.ajouterAdresse(req.user.id, req.body);
-    return success(res, adresse, 'Adresse créée', 201);
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: ajouterAdresse(req, res, next)
+//   - Appeler profilService.ajouterAdresse(req.user.id, req.body)
+//   - Retourner 201 + adresse créée
 
-async function updateAdresse(req, res, next) {
-  try {
-    const adresse = await profilService.updateAdresse(req.user.id, req.params.id, req.body);
-    return success(res, adresse, 'Adresse mise à jour');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: updateAdresse(req, res, next)
+//   - Appeler profilService.updateAdresse(req.user.id, req.params.id, req.body)
+//   - Retourner 200 + adresse mise à jour
 
-async function supprimerAdresse(req, res, next) {
-  try {
-    const result = await profilService.supprimerAdresse(req.user.id, req.params.id);
-    return success(res, null, result.message);
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: supprimerAdresse(req, res, next)
+//   - Appeler profilService.supprimerAdresse(req.user.id, req.params.id)
+//   - Retourner 200 + message
 
-async function setDefault(req, res, next) {
-  try {
-    const adresse = await profilService.setAdresseDefault(req.user.id, req.params.id);
-    return success(res, adresse, 'Adresse par défaut définie');
-  } catch (err) {
-    next(err);
-  }
-}
-
-module.exports = {
-  get,
-  update,
-  updateAvatar,
-  getAdresses,
-  ajouterAdresse,
-  updateAdresse,
-  supprimerAdresse,
-  setDefault,
-};
+// TODO: setDefault(req, res, next)
+//   - Appeler profilService.setAdresseDefault(req.user.id, req.params.id)
+//   - Retourner 200 + adresse mise à jour

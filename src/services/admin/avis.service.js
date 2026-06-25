@@ -1,31 +1,24 @@
-﻿const { Op } = require('sequelize');
-const { Avis, User, Produit } = require('../../models');
-const { paginateResult } = require('../../utils/paginate');
+﻿// ─────────────────────────────────────────────────────────────
+// services/admin/avis.service.js
+// ─────────────────────────────────────────────────────────────
 
-async function getAllAvis(filters = {}, pagination) {
-  const where = {};
-  if (filters.isApproved !== undefined) where.isApproved = filters.isApproved === 'true' || filters.isApproved === true;
-  if (filters.produitId) where.produitId = filters.produitId;
-  if (filters.userId) where.userId = filters.userId;
+// TODO: getAllAvis(filters)
+//   - Filtres : isApproved, produitId, userId
+//   - Include User et Produit
+//   - Retourner la liste des avis
 
-  const { page, limit, offset } = pagination;
-  const { rows, count } = await Avis.findAndCountAll({ where, order: [['createdAt', 'DESC']], limit, offset, include: [{ model: User, attributes: ['id', 'nom', 'prenom'] }, { model: Produit }] });
-  return { rows, count, totalPages: paginateResult(count, page, limit).totalPages };
-}
+// TODO: approuverAvis(id)
+//   - Vérifier que l'avis existe
+//   - Mettre isApproved=true
+//   - Retourner l'avis mis à jour
 
-async function toggleApprove(id) {
-  const avis = await Avis.findByPk(id);
-  if (!avis) throw Object.assign(new Error('Avis introuvable'), { status: 404 });
-  avis.isApproved = !avis.isApproved;
-  await avis.save();
-  return avis;
-}
+// TODO: rejeterAvis(id)
+//   - Vérifier que l'avis existe
+//   - Supprimer l'avis de la base
+//   - Retourner un message de succès
 
-async function deleteAvis(id) {
-  const avis = await Avis.findByPk(id);
-  if (!avis) throw Object.assign(new Error('Avis introuvable'), { status: 404 });
-  await avis.destroy();
-  return { message: 'Avis supprimé' };
-}
-
-module.exports = { getAllAvis, toggleApprove, deleteAvis };
+// TODO: getAvisByProduit(produitId)
+//   - Récupérer tous les avis approuvés d'un produit
+//   - Include User (nom, avatar)
+//   - Calculer la note moyenne
+//   - Retourner { avis, noteMoyenne }

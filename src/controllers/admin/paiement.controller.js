@@ -1,42 +1,17 @@
-﻿const paiementService = require('../../services/admin/paiement.service');
-const { paginate } = require('../../utils/paginate');
-const { success } = require('../../utils/formatResponse');
+﻿// ─────────────────────────────────────────────────────────────
+// controllers/admin/paiement.controller.js
+// ─────────────────────────────────────────────────────────────
+// const paiementService = require('../../services/admin/paiement.service')
 
-async function getAll(req, res, next) {
-  try {
-    const pagination = paginate(req.query);
-    const result = await paiementService.getAllPaiements(req.query, pagination);
-    return success(res, result, 'Paiements récupérés');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: getAll(req, res, next)
+//   - Extraire filtres et pagination depuis req.query
+//   - Appeler paiementService.getAllPaiements(filters, pagination)
+//   - Retourner 200 + { paiements, totalPages, count }
 
-async function updateStatut(req, res, next) {
-  try {
-    const paiement = await paiementService.updateStatut(req.params.id, req.body.statut);
-    return success(res, paiement, 'Statut du paiement mis à jour');
-  } catch (err) {
-    next(err);
-  }
-}
+// TODO: getOne(req, res, next)
+//   - Appeler paiementService.getPaiementById(req.params.id)
+//   - Retourner 200 + paiement
 
-async function getOne(req, res, next) {
-  try {
-    const paiement = await paiementService.getPaiementById(req.params.id);
-    return success(res, paiement, 'Paiement récupéré');
-  } catch (err) {
-    next(err);
-  }
-}
-
-async function rembourser(req, res, next) {
-  try {
-    const paiement = await paiementService.updateStatut(req.params.id, 'rembourse');
-    return success(res, paiement, 'Paiement remboursé');
-  } catch (err) {
-    next(err);
-  }
-}
-
-module.exports = { getAll, getOne, updateStatut, rembourser };
+// TODO: rembourser(req, res, next)
+//   - Appeler paiementService.rembourserPaiement(req.params.id, req.body.raison)
+//   - Retourner 200 + paiement mis à jour

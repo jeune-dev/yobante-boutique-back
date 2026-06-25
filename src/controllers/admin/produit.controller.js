@@ -1,104 +1,41 @@
-﻿const produitService = require('../../services/admin/produit.service');
-const { paginate } = require('../../utils/paginate');
-const { success } = require('../../utils/formatResponse');
+﻿// ─────────────────────────────────────────────────────────────
+// controllers/admin/produit.controller.js
+// ─────────────────────────────────────────────────────────────
+// const produitService = require('../../services/admin/produit.service')
 
-async function create(req, res, next) {
-	try {
-		const produit = await produitService.createProduit(req.body, req.files);
-		return success(res, produit, 'Produit créé', 201);
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: create(req, res, next)
+//   - Passer req.body et req.files à produitService.createProduit()
+//   - Retourner 201 + produit créé
 
-async function getAll(req, res, next) {
-	try {
-		const pagination = paginate(req.query);
-		const result = await produitService.getAllProduits(req.query, pagination);
-		return success(res, result, 'Produits récupérés');
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: getAll(req, res, next)
+//   - Extraire filtres et pagination depuis req.query
+//   - Appeler produitService.getAllProduits(filters, pagination)
+//   - Retourner 200 + { produits, totalPages, count }
 
-async function getOne(req, res, next) {
-	try {
-		const produit = await produitService.getProduitById(req.params.id);
-		return success(res, produit, 'Produit récupéré');
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: getOne(req, res, next)
+//   - Appeler produitService.getProduitById(req.params.id)
+//   - Retourner 200 + produit
 
-async function update(req, res, next) {
-	try {
-		const produit = await produitService.updateProduit(req.params.id, req.body, req.files);
-		return success(res, produit, 'Produit mis à jour');
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: update(req, res, next)
+//   - Passer req.params.id, req.body, req.files à produitService.updateProduit()
+//   - Retourner 200 + produit mis à jour
 
-async function remove(req, res, next) {
-	try {
-		const result = await produitService.deleteProduit(req.params.id);
-		return success(res, null, result.message);
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: remove(req, res, next)
+//   - Appeler produitService.deleteProduit(req.params.id)
+//   - Retourner 200 + message
 
-async function updateStock(req, res, next) {
-	try {
-		const produit = await produitService.updateStock(req.params.id, req.body.quantite);
-		return success(res, produit, 'Stock mis à jour');
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: updateStock(req, res, next)
+//   - Appeler produitService.updateStock(req.params.id, req.body.quantite)
+//   - Retourner 200 + produit mis à jour
 
-async function toggleFeatured(req, res, next) {
-	try {
-		const produit = await produitService.toggleFeatured(req.params.id);
-		return success(res, produit, 'Statut featured inversé');
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: toggleFeatured(req, res, next)
+//   - Appeler produitService.toggleFeatured(req.params.id)
+//   - Retourner 200 + produit mis à jour
 
-async function toggleVisibilite(req, res, next) {
-	try {
-		const produit = await produitService.toggleVisibilite(req.params.id);
-		return success(res, produit, 'Visibilité inversée');
-	} catch (err) {
-		next(err);
-	}
-}
+// TODO: toggleVisibilite(req, res, next)
+//   - Appeler produitService.toggleVisibilite(req.params.id)
+//   - Retourner 200 + produit mis à jour
 
-module.exports = {
-	create,
-	getAll,
-	getOne,
-	update,
-	remove,
-	updateStock,
-	toggleFeatured,
-	toggleVisibilite,
-};
-
-async function importProduits(req, res, next) {
-	try {
-		if (!req.file) {
-			const err = new Error('Fichier CSV requis');
-			err.status = 400;
-			throw err;
-		}
-		const result = await produitService.importProduits(req.file.buffer);
-		return success(res, result, `Import terminé : ${result.created} produit(s) créé(s)`);
-	} catch (err) {
-		next(err);
-	}
-}
-
-module.exports.importProduits = importProduits;
-
+// TODO: importProduits(req, res, next)
+//   - Passer req.file à produitService.importProduits()
+//   - Retourner 200 + { created, errors }

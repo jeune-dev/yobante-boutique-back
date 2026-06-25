@@ -1,9 +1,8 @@
-﻿const Joi = require('joi');
+﻿// ─────────────────────────────────────────────────────────────
+// validations/avis.validation.js — Schémas Joi pour les avis
+// ─────────────────────────────────────────────────────────────
 
-const avisSchema = Joi.object({
-  produitId: Joi.number().integer().required(),
-  note: Joi.number().integer().min(1).max(5).required(),
-  commentaire: Joi.string().trim().max(1000).optional().allow('', null),
-});
+// TODO: avisSchema — produitId (requis, integer), note (integer, min 1, max 5, requis),
+//                    commentaire (string optionnel, max 1000 caractères)
 
-module.exports = { avisSchema };
+// module.exports = { avisSchema }

@@ -1,15 +1,18 @@
-﻿const router = require('express').Router();
-const ctrl = require('../../controllers/admin/commande.controller');
-const { auth } = require('../../middlewares/auth.middleware');
-const { admin } = require('../../middlewares/admin.middleware');
+﻿// ─────────────────────────────────────────────────────────────
+// routes/admin/commande.route.js   — Préfixe : /api/admin/commandes
+// ─────────────────────────────────────────────────────────────
+// const router = require('express').Router()
+// const ctrl = require('../../controllers/admin/commande.controller')
+// const { auth } = require('../../middlewares/auth.middleware')
+// const { admin } = require('../../middlewares/admin.middleware')
 
-router.get('/', auth, admin, ctrl.getAll);
-router.get('/export', auth, admin, ctrl.exportCommandes);
-router.get('/:id', auth, admin, ctrl.getOne);
-router.patch('/:id/valider', auth, admin, ctrl.valider);
-router.patch('/:id/rejeter', auth, admin, ctrl.rejeter);
-router.patch('/:id/preparation', auth, admin, ctrl.mettreEnPreparation);
-router.patch('/:id/expedier', auth, admin, ctrl.marquerExpediee);
-router.patch('/:id/livrer', auth, admin, ctrl.marquerLivree);
+// GET    /api/admin/commandes                     -> ctrl.getAll             [auth, admin]
+// GET    /api/admin/commandes/export              -> ctrl.exportCommandes     [auth, admin]
+// GET    /api/admin/commandes/:id                 -> ctrl.getOne             [auth, admin]
+// PATCH  /api/admin/commandes/:id/valider         -> ctrl.valider            [auth, admin]
+// PATCH  /api/admin/commandes/:id/rejeter         -> ctrl.rejeter            [auth, admin]
+// PATCH  /api/admin/commandes/:id/preparation     -> ctrl.mettreEnPreparation[auth, admin]
+// PATCH  /api/admin/commandes/:id/expedier        -> ctrl.marquerExpediee    [auth, admin]
+// PATCH  /api/admin/commandes/:id/livrer          -> ctrl.marquerLivree      [auth, admin]
 
-module.exports = router
+// module.exports = router
