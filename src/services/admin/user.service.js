@@ -1,12 +1,30 @@
 ﻿// ─────────────────────────────────────────────────────────────
 // services/admin/user.service.js
 // ─────────────────────────────────────────────────────────────
-
+class GestionUserService {
 // TODO: getAllUsers(filters, pagination)
 //   - Filtres possibles : nom, email, isActive, isVerified
 //   - Pagination : page, limit (utiliser l'utilitaire paginate.js)
 //   - Exclure les admins (role != 'admin')
 //   - Retourner { rows, count, totalPages }
+ //LISTE DES CLIENT
+    static async listerClients({ page, limit } = {}) {
+        const { page: p, limit: l, offset } = paginate(page, limit);
+
+        const { count, rows } = await Utilisateur.findAndCountAll({
+            attributes: { exclude: ['mot_de_passe'] },
+            where: { role: 'CLIENT' },
+            order: [['createdAt', 'DESC']],
+            limit: l,
+            offset
+        });
+
+        return {
+            message: "Liste des clients",
+            clients: rows,
+            pagination: { total: count, totalPages: Math.ceil(count / l), page: p, limit: l }
+        };
+    }
 
 // TODO: getUserById(id)
 //   - Trouver l'user avec ses commandes (include Commande)
@@ -33,3 +51,5 @@
 //   - Récupérer tous les clients
 //   - Générer un fichier CSV ou Excel
 //   - Retourner le buffer du fichier
+
+}

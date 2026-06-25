@@ -7,7 +7,7 @@ class GestionAdminService {
 
         const { count, rows } = await Utilisateur.findAndCountAll({
             attributes: { exclude: ['mot_de_passe'] },
-            where: { role: 'Admin' },
+            where: { role: 'ADMIN' },
             order: [['createdAt', 'DESC']],
             limit: l,
             offset
