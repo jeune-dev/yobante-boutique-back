@@ -1,17 +1,44 @@
-﻿// ─────────────────────────────────────────────────────────────
-// controllers/admin/avis.controller.js
-// ─────────────────────────────────────────────────────────────
-// const avisService = require('../../services/admin/avis.service')
+﻿const avisService = require('../../services/admin/avis.service');
+const { paginate } = require('../../utils/paginate');
+const { success } = require('../../utils/formatResponse');
 
-// TODO: getAll(req, res, next)
-//   - Extraire filtres depuis req.query (isApproved, produitId)
-//   - Appeler avisService.getAllAvis(filters)
-//   - Retourner 200 + liste des avis
+async function getAll(req, res, next) {
+  try {
+    const pagination = paginate(req.query);
+    const result = await avisService.getAllAvis(req.query, pagination);
+    return success(res, result, 'Avis récupérés');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: approuver(req, res, next)
-//   - Appeler avisService.approuverAvis(req.params.id)
-//   - Retourner 200 + avis mis à jour
+async function toggleApprove(req, res, next) {
+  try {
+    const avis = await avisService.toggleApprove(req.params.id);
+    return success(res, avis, 'Statut d`approbation inversé');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: remove(req, res, next)
-//   - Appeler avisService.rejeterAvis(req.params.id)
-//   - Retourner 200 + message
+async function remove(req, res, next) {
+  try {
+    const result = await avisService.deleteAvis(req.params.id);
+    return success(res, null, result.message);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getAll, toggleApprove, remove };
+
+async function approuver(req, res, next) {
+  try {
+    const avis = await avisService.toggleApprove(req.params.id);
+    return success(res, avis, 'Avis approuvé/désapprouvé');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports.approuver = approuver;

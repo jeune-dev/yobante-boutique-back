@@ -1,30 +1,73 @@
-﻿// ─────────────────────────────────────────────────────────────
-// controllers/admin/user.controller.js
-// ─────────────────────────────────────────────────────────────
-// const userService = require('../../services/admin/user.service')
+﻿const userService = require('../../services/admin/user.service');
+const { paginate } = require('../../utils/paginate');
+const { success } = require('../../utils/formatResponse');
 
-// TODO: getAll(req, res, next)
-//   - Extraire filtres et pagination depuis req.query
-//   - Appeler userService.getAllUsers(filters, pagination)
-//   - Retourner 200 + { users, totalPages, count }
+async function getAll(req, res, next) {
+  try {
+    const pagination = paginate(req.query);
+    const result = await userService.getAllUsers(req.query, pagination);
+    return success(res, result, 'Utilisateurs récupérés');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: getOne(req, res, next)
-//   - Appeler userService.getUserById(req.params.id)
-//   - Retourner 200 + user
+async function getOne(req, res, next) {
+  try {
+    const user = await userService.getUserById(req.params.id);
+    return success(res, user, 'Utilisateur récupéré');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: bloquer(req, res, next)
-//   - Appeler userService.bloquerUser(req.params.id, req.body.raison)
-//   - Retourner 200 + user mis à jour
+async function toggleActive(req, res, next) {
+  try {
+    const user = await userService.toggleActive(req.params.id);
+    return success(res, user, 'Statut actif inversé');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: activer(req, res, next)
-//   - Appeler userService.activerUser(req.params.id)
-//   - Retourner 200 + user mis à jour
+async function remove(req, res, next) {
+  try {
+    const result = await userService.deleteUser(req.params.id);
+    return success(res, null, result.message);
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: remove(req, res, next)
-//   - Appeler userService.deleteUser(req.params.id)
-//   - Retourner 200 + message
+module.exports = { getAll, getOne, toggleActive, remove };
 
-// TODO: exportUsers(req, res, next)
-//   - Appeler userService.exportUsers(req.query.format)
-//   - Définir les headers Content-Type et Content-Disposition
-//   - Retourner le fichier en réponse
+async function exportUsers(req, res, next) {
+  try {
+    const result = await userService.getAllUsers(req.query, { page: 1, limit: 10000, offset: 0 });
+    return success(res, result.rows, 'Export utilisateurs');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function bloquer(req, res, next) {
+  try {
+    const user = await userService.toggleActive(req.params.id);
+    return success(res, user, 'Utilisateur bloqué/débloqué');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function activer(req, res, next) {
+  try {
+    const user = await userService.toggleActive(req.params.id);
+    return success(res, user, 'Utilisateur activé/désactivé');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports.exportUsers = exportUsers;
+module.exports.bloquer = bloquer;
+module.exports.activer = activer;

@@ -1,35 +1,37 @@
-﻿// ─────────────────────────────────────────────────────────────
-// services/admin/user.service.js
-// ─────────────────────────────────────────────────────────────
+﻿const { Op } = require('sequelize');
+const { User, Commande } = require('../../models');
+const { paginateResult } = require('../../utils/paginate');
 
-// TODO: getAllUsers(filters, pagination)
-//   - Filtres possibles : nom, email, isActive, isVerified
-//   - Pagination : page, limit (utiliser l'utilitaire paginate.js)
-//   - Exclure les admins (role != 'admin')
-//   - Retourner { rows, count, totalPages }
+async function getAllUsers(filters = {}, pagination) {
+  const where = {};
+  if (filters.email) where.email = { [Op.iLike]: `%${filters.email}%` };
+  if (filters.nom) where.nom = { [Op.iLike]: `%${filters.nom}%` };
+  if (filters.isActive !== undefined) where.isActive = filters.isActive === 'true' || filters.isActive === true;
 
-// TODO: getUserById(id)
-//   - Trouver l'user avec ses commandes (include Commande)
-//   - Lever une erreur 404 si non trouvé
-//   - Retourner l'user sans le champ password
+  const { page, limit, offset } = pagination;
+  const { rows, count } = await User.findAndCountAll({ where, order: [['createdAt', 'DESC']], limit, offset, attributes: { exclude: ['password'] } });
+  return { rows, count, totalPages: paginateResult(count, page, limit).totalPages };
+}
 
-// TODO: bloquerUser(id, raison)
-//   - Vérifier que l'user existe et n'est pas admin
-//   - Mettre isActive=false
-//   - Envoyer email de notification au client (optionnel)
-//   - Retourner l'user mis à jour
+async function getUserById(id) {
+  const user = await User.findByPk(id, { attributes: { exclude: ['password'] }, include: [{ model: Commande }] });
+  if (!user) throw Object.assign(new Error('Utilisateur introuvable'), { status: 404 });
+  return user;
+}
 
-// TODO: activerUser(id)
-//   - Vérifier que l'user existe
-//   - Mettre isActive=true
-//   - Retourner l'user mis à jour
+async function toggleActive(id) {
+  const user = await User.findByPk(id);
+  if (!user) throw Object.assign(new Error('Utilisateur introuvable'), { status: 404 });
+  user.isActive = !user.isActive;
+  await user.save();
+  return user;
+}
 
-// TODO: deleteUser(id)
-//   - Vérifier que l'user existe et n'est pas admin
-//   - Suppression soft : anonymiser les données personnelles
-//   - Retourner un message de succès
+async function deleteUser(id) {
+  const user = await User.findByPk(id);
+  if (!user) throw Object.assign(new Error('Utilisateur introuvable'), { status: 404 });
+  await user.destroy();
+  return { message: 'Utilisateur supprimé' };
+}
 
-// TODO: exportUsers(format='csv')
-//   - Récupérer tous les clients
-//   - Générer un fichier CSV ou Excel
-//   - Retourner le buffer du fichier
+module.exports = { getAllUsers, getUserById, toggleActive, deleteUser };

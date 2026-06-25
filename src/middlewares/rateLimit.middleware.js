@@ -1,15 +1,7 @@
-﻿// ─────────────────────────────────────────────────────────────
-// middlewares/rateLimit.middleware.js
-// ─────────────────────────────────────────────────────────────
+﻿const rateLimitLib = require('express-rate-limit');
+const { rateLimitConfig, authRateLimitConfig } = require('../config/security');
 
-// TODO: importer express-rate-limit
-// TODO: importer rateLimitConfig et authRateLimitConfig depuis ../config/security.js
+const rateLimit = rateLimitLib(rateLimitConfig);
+const rateLimitAuth = rateLimitLib(authRateLimitConfig);
 
-// TODO: rateLimit = rateLimit(rateLimitConfig)
-//   - Limite globale : 100 requêtes / 15 minutes par IP
-
-// TODO: rateLimitAuth = rateLimit(authRateLimitConfig)
-//   - Limite auth : 5 requêtes / 15 minutes par IP
-//   - Message : 'Trop de tentatives. Veuillez réessayer dans 15 minutes.'
-
-// module.exports = { rateLimit, rateLimitAuth }
+module.exports = { rateLimit, rateLimitAuth, authRateLimit: rateLimitAuth };

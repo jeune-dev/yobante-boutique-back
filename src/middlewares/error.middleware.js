@@ -1,15 +1,32 @@
-﻿// ─────────────────────────────────────────────────────────────
-// middlewares/error.middleware.js — Gestionnaire global d'erreurs
-// ─────────────────────────────────────────────────────────────
+﻿const logger = require('../utils/logger');
+const { error } = require('../utils/formatResponse');
 
-// TODO: errorMiddleware(err, req, res, next)
-//   - Logger l'erreur avec winston (sans données sensibles)
-//   - Si err.isJoi ou err.name === 'ValidationError' : retourner 400
-//   - Si err.name === 'UnauthorizedError' ou err.status === 401 : retourner 401
-//   - Si err.status === 403 : retourner 403
-//   - Si err.status === 404 : retourner 404
-//   - Si err.name === 'SequelizeUniqueConstraintError' : retourner 409
-//   - Par défaut : retourner 500 sans exposer le stack trace en production
-//   - Format de réponse : { success: false, message: '...', errors: [...] }
+function errorMiddleware(err, req, res, next) {
+  const status = err.status || 500;
+  let message = err.message || 'Erreur interne du serveur';
+  let errors = null;
 
-// module.exports = errorMiddleware
+  if (err.isJoi || err.name === 'ValidationError') {
+    message = 'Données invalides';
+    errors = err.details ? err.details.map((detail) => detail.message) : [err.message];
+  } else if (err.name === 'UnauthorizedError' || status === 401) {
+    message = err.message || 'Non autorisé';
+  } else if (status === 403) {
+    message = err.message || 'Accès refusé';
+  } else if (status === 404) {
+    message = err.message || 'Ressource non trouvée';
+  } else if (err.name === 'SequelizeUniqueConstraintError') {
+    message = 'Conflit de données';
+    errors = err.errors ? err.errors.map((e) => e.message) : null;
+  }
+
+  logger.error({ message, errors, stack: err.stack });
+
+  if (process.env.NODE_ENV === 'production' && status === 500) {
+    message = 'Erreur interne du serveur';
+  }
+
+  return error(res, message, status, errors);
+}
+
+module.exports = errorMiddleware;
