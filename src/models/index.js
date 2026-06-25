@@ -1,26 +1,54 @@
-// ─────────────────────────────────────────────────────────────
-// models/index.js — Initialisation Sequelize et associations
-// ─────────────────────────────────────────────────────────────
+const sequelize = require('../config/db');
+const User = require('./User.model');
+const Adresse = require('./adresse.model');
+const Categorie = require('./Categorie.model');
+const Produit = require('./Produit.model');
+const Commande = require('./commande.model');
+const CommandeItem = require('./commandeItem.model');
+const Paiement = require('./paiement.model');
+const Panier = require('./panier.model');
+const Avis = require('./avis.model');
+const RefreshToken = require('./refreshToken.model');
+const UserOtp = require('./userOtp.model');
 
-// TODO: importer sequelize depuis ../config/db
-// TODO: importer tous les modèles
+User.hasMany(Commande, { foreignKey: 'userId' });
+Commande.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Adresse, { foreignKey: 'userId' });
+Adresse.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Panier, { foreignKey: 'userId' });
+Panier.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Avis, { foreignKey: 'userId' });
+Avis.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(RefreshToken, { foreignKey: 'userId' });
+RefreshToken.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(UserOtp, { foreignKey: 'userId' });
+UserOtp.belongsTo(User, { foreignKey: 'userId' });
+Categorie.hasMany(Produit, { foreignKey: 'categorieId' });
+Produit.belongsTo(Categorie, { foreignKey: 'categorieId' });
+Categorie.hasMany(Categorie, { as: 'sousCategories', foreignKey: 'parentId' });
+Produit.hasMany(CommandeItem, { foreignKey: 'produitId' });
+CommandeItem.belongsTo(Produit, { foreignKey: 'produitId' });
+Produit.hasMany(Panier, { foreignKey: 'produitId' });
+Panier.belongsTo(Produit, { foreignKey: 'produitId' });
+Produit.hasMany(Avis, { foreignKey: 'produitId' });
+Avis.belongsTo(Produit, { foreignKey: 'produitId' });
+Commande.hasMany(CommandeItem, { foreignKey: 'commandeId' });
+CommandeItem.belongsTo(Commande, { foreignKey: 'commandeId' });
+Commande.hasOne(Paiement, { foreignKey: 'commandeId' });
+Paiement.belongsTo(Commande, { foreignKey: 'commandeId' });
+Commande.belongsTo(Adresse, { foreignKey: 'adresseId' });
 
-// TODO: définir toutes les associations entre modèles :
-//   User.hasMany(Commande)          Commande.belongsTo(User)
-//   User.hasMany(Adresse)           Adresse.belongsTo(User)
-//   User.hasMany(Panier)            Panier.belongsTo(User)
-//   User.hasMany(Avis)              Avis.belongsTo(User)
-//   User.hasMany(RefreshToken)      RefreshToken.belongsTo(User)
-//   User.hasMany(UserOtp)           UserOtp.belongsTo(User)
-//   Categorie.hasMany(Produit)      Produit.belongsTo(Categorie)
-//   Categorie.hasMany(Categorie, { as: 'sousCategories', foreignKey: 'parentId' })
-//   Produit.hasMany(CommandeItem)   CommandeItem.belongsTo(Produit)
-//   Produit.hasMany(Panier)         Panier.belongsTo(Produit)
-//   Produit.hasMany(Avis)           Avis.belongsTo(Produit)
-//   Commande.hasMany(CommandeItem)  CommandeItem.belongsTo(Commande)
-//   Commande.hasOne(Paiement)       Paiement.belongsTo(Commande)
-//   Commande.belongsTo(Adresse)
-
-// TODO: exporter { sequelize, User, Categorie, Produit, Adresse,
-//         Commande, CommandeItem, Paiement, Avis, Panier,
-//         RefreshToken, UserOtp }
+module.exports = {
+  sequelize,
+  User,
+  Adresse,
+  Categorie,
+  Produit,
+  Commande,
+  CommandeItem,
+  Paiement,
+  Avis,
+  Panier,
+  RefreshToken,
+  UserOtp,
+};

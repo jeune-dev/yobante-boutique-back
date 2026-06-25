@@ -1,9 +1,15 @@
-﻿// ─────────────────────────────────────────────────────────────
-// middlewares/admin.middleware.js
-// ─────────────────────────────────────────────────────────────
+﻿const { error } = require('../utils/formatResponse');
 
-// TODO: admin(req, res, next)
-//   - Vérifier que req.user existe (auth.middleware doit être appelé avant)
-//   - Vérifier que req.user.role === 'admin'
-//   - Si non : retourner 403 avec message 'Accès refusé'
-//   - Si oui : appeler next()
+function admin(req, res, next) {
+  if (!req.user) {
+    return error(res, 'Accès refusé', 403);
+  }
+
+  if (req.user.role !== 'admin') {
+    return error(res, 'Accès refusé', 403);
+  }
+
+  next();
+}
+
+module.exports = { admin };

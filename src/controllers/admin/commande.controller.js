@@ -1,38 +1,95 @@
-﻿// ─────────────────────────────────────────────────────────────
-// controllers/admin/commande.controller.js
-// ─────────────────────────────────────────────────────────────
-// const commandeService = require('../../services/admin/commande.service')
+﻿const commandeService = require('../../services/admin/commande.service');
+const { paginate } = require('../../utils/paginate');
+const { success } = require('../../utils/formatResponse');
 
-// TODO: getAll(req, res, next)
-//   - Extraire filtres et pagination depuis req.query
-//   - Appeler commandeService.getAllCommandes(filters, pagination)
-//   - Retourner 200 + { commandes, totalPages, count }
+async function getAll(req, res, next) {
+  try {
+    const pagination = paginate(req.query);
+    const result = await commandeService.getAllCommandes(req.query, pagination);
+    return success(res, result, 'Commandes récupérées');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: getOne(req, res, next)
-//   - Appeler commandeService.getCommandeById(req.params.id)
-//   - Retourner 200 + commande complète
+async function getOne(req, res, next) {
+  try {
+    const commande = await commandeService.getCommandeById(req.params.id);
+    return success(res, commande, 'Commande récupérée');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: valider(req, res, next)
-//   - Appeler commandeService.validerCommande(req.params.id, req.body.noteAdmin)
-//   - Retourner 200 + commande mise à jour
+async function updateStatut(req, res, next) {
+  try {
+    const { statut, noteAdmin } = req.body;
+    const commande = await commandeService.updateStatut(req.params.id, statut, noteAdmin);
+    return success(res, commande, 'Statut mis à jour');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: rejeter(req, res, next)
-//   - Appeler commandeService.rejeterCommande(req.params.id, req.body.raison)
-//   - Retourner 200 + commande mise à jour
+module.exports = { getAll, getOne, updateStatut };
 
-// TODO: mettreEnPreparation(req, res, next)
-//   - Appeler commandeService.mettreEnPreparation(req.params.id)
-//   - Retourner 200 + commande mise à jour
+async function exportCommandes(req, res, next) {
+  try {
+    const result = await commandeService.getAllCommandes(req.query, { page: 1, limit: 1000, offset: 0 });
+    return success(res, result.rows, 'Export commandes');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: marquerExpediee(req, res, next)
-//   - Appeler commandeService.marquerExpediee(req.params.id, req.body.trackingInfo)
-//   - Retourner 200 + commande mise à jour
+async function valider(req, res, next) {
+  try {
+    const commande = await commandeService.updateStatut(req.params.id, 'validee');
+    return success(res, commande, 'Commande validée');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: marquerLivree(req, res, next)
-//   - Appeler commandeService.marquerLivree(req.params.id)
-//   - Retourner 200 + commande mise à jour
+async function rejeter(req, res, next) {
+  try {
+    const commande = await commandeService.updateStatut(req.params.id, 'annulee');
+    return success(res, commande, 'Commande rejetée');
+  } catch (err) {
+    next(err);
+  }
+}
 
-// TODO: exportCommandes(req, res, next)
-//   - Appeler commandeService.exportCommandes(req.query, req.query.format)
-//   - Définir headers Content-Type et Content-Disposition
-//   - Retourner le fichier
+async function mettreEnPreparation(req, res, next) {
+  try {
+    const commande = await commandeService.updateStatut(req.params.id, 'en_preparation');
+    return success(res, commande, 'Commande en préparation');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function marquerExpediee(req, res, next) {
+  try {
+    const commande = await commandeService.updateStatut(req.params.id, 'expediee');
+    return success(res, commande, 'Commande expédiée');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function marquerLivree(req, res, next) {
+  try {
+    const commande = await commandeService.updateStatut(req.params.id, 'livree');
+    return success(res, commande, 'Commande livrée');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports.exportCommandes = exportCommandes;
+module.exports.valider = valider;
+module.exports.rejeter = rejeter;
+module.exports.mettreEnPreparation = mettreEnPreparation;
+module.exports.marquerExpediee = marquerExpediee;
+module.exports.marquerLivree = marquerLivree;

@@ -1,28 +1,36 @@
-﻿// ─────────────────────────────────────────────────────────────
-// services/admin/paiement.service.js
-// ─────────────────────────────────────────────────────────────
+﻿const { Op } = require('sequelize');
+const { Paiement, Commande, User } = require('../../models');
+const { paginateResult } = require('../../utils/paginate');
 
-// TODO: getAllPaiements(filters, pagination)
-//   - Filtres : statut, methode, userId, dateDebut, dateFin
-//   - Include User et Commande
-//   - Retourner { rows, count, totalPages }
+async function getAllPaiements(filters = {}, pagination) {
+  const where = {};
+  if (filters.statut) where.statut = filters.statut;
+  if (filters.methode) where.methode = filters.methode;
 
-// TODO: getPaiementById(id)
-//   - Include Commande et User
-//   - Lever une erreur 404 si non trouvé
+  const { page, limit, offset } = pagination;
+  const { rows, count } = await Paiement.findAndCountAll({
+    where,
+    order: [['createdAt', 'DESC']],
+    limit,
+    offset,
+    include: [{ model: Commande, include: [{ model: User, attributes: ['nom', 'prenom', 'email'] }] }],
+  });
+  return { rows, count, totalPages: paginateResult(count, page, limit).totalPages };
+}
 
-// TODO: getPaiementByCommande(commandeId)
-//   - Trouver le paiement lié à une commande
-//   - Lever une erreur 404 si non trouvé
+async function updateStatut(id, statut) {
+  const paiement = await Paiement.findByPk(id);
+  if (!paiement) throw Object.assign(new Error('Paiement introuvable'), { status: 404 });
+  paiement.statut = statut;
+  if (statut === 'succes') paiement.payeAt = new Date();
+  await paiement.save();
+  return paiement;
+}
 
-// TODO: rembourserPaiement(id, raison)
-//   - Vérifier que le paiement est en statut 'succes'
-//   - Appeler l'API de l'opérateur de paiement pour le remboursement
-//   - Mettre le statut à 'rembourse'
-//   - Envoyer email de confirmation de remboursement au client
-//   - Retourner le paiement mis à jour
+async function getPaiementById(id) {
+  const paiement = await Paiement.findByPk(id);
+  if (!paiement) throw Object.assign(new Error('Paiement introuvable'), { status: 404 });
+  return paiement;
+}
 
-// TODO: getRevenusTotal(periode)
-//   - periode : { dateDebut, dateFin }
-//   - SUM(montant) des paiements en statut 'succes' sur la période
-//   - Retourner { total, nbTransactions }
+module.exports = { getAllPaiements, updateStatut, getPaiementById };
