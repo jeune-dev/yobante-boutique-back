@@ -1,28 +1,115 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // services/admin/paiement.service.js
 // ─────────────────────────────────────────────────────────────
+const { Op } = require('sequelize');
+const { Paiement, Commande, User } = require('../../models');
+const paginate = require('../../utils/paginate');
 
-// TODO: getAllPaiements(filters, pagination)
-//   - Filtres : statut, methode, userId, dateDebut, dateFin
-//   - Include User et Commande
-//   - Retourner { rows, count, totalPages }
+class GestionPaiementService {
 
-// TODO: getPaiementById(id)
-//   - Include Commande et User
-//   - Lever une erreur 404 si non trouvé
+  static async getAllPaiements({ page, limit, statut, methode, userId, dateDebut, dateFin } = {}) {
+    const { page: p, limit: l, offset } = paginate(page, limit);
 
-// TODO: getPaiementByCommande(commandeId)
-//   - Trouver le paiement lié à une commande
-//   - Lever une erreur 404 si non trouvé
+    const where = {};
+    if (statut) where.statut = statut;
+    if (methode) where.methode = methode;
+    if (userId) where.userId = userId;
+    if (dateDebut || dateFin) {
+      where.createdAt = {};
+      if (dateDebut) where.createdAt[Op.gte] = new Date(dateDebut);
+      if (dateFin) where.createdAt[Op.lte] = new Date(dateFin);
+    }
 
-// TODO: rembourserPaiement(id, raison)
-//   - Vérifier que le paiement est en statut 'succes'
-//   - Appeler l'API de l'opérateur de paiement pour le remboursement
-//   - Mettre le statut à 'rembourse'
-//   - Envoyer email de confirmation de remboursement au client
-//   - Retourner le paiement mis à jour
+    const { count, rows } = await Paiement.findAndCountAll({
+      where,
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'nom', 'prenom', 'email'] },
+        { model: Commande, as: 'commande' },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: l,
+      offset,
+    });
 
-// TODO: getRevenusTotal(periode)
-//   - periode : { dateDebut, dateFin }
-//   - SUM(montant) des paiements en statut 'succes' sur la période
-//   - Retourner { total, nbTransactions }
+    return {
+      success: true,
+      paiements: rows,
+      pagination: { total: count, totalPages: Math.ceil(count / l), page: p, limit: l },
+    };
+  }
+
+  static async getPaiementById(id) {
+    const paiement = await Paiement.findByPk(id, {
+      include: [{ model: Commande, as: 'commande' }, { model: User, as: 'user' }],
+    });
+
+    if (!paiement) {
+      return { success: false, message: "Paiement introuvable" };
+    }
+
+    return { success: true, paiement };
+  }
+
+  static async getPaiementByCommande(commandeId) {
+    const paiement = await Paiement.findOne({
+      where: { commandeId },
+      include: [{ model: Commande, as: 'commande' }, { model: User, as: 'user' }],
+    });
+
+    if (!paiement) {
+      return { success: false, message: "Aucun paiement trouvé pour cette commande" };
+    }
+
+    return { success: true, paiement };
+  }
+
+  static async confirmerPaiement(id, transactionId) {
+    const paiement = await Paiement.findByPk(id);
+    if (!paiement) {
+      return { success: false, message: "Paiement introuvable" };
+    }
+
+    if (paiement.statut !== 'en_attente') {
+      return { success: false, message: "Seul un paiement en attente peut être confirmé" };
+    }
+
+    // NOTE : confirmation manuelle en attendant une vraie intégration webhook
+    // avec l'opérateur de paiement (Wave / Orange Money / carte).
+    await paiement.update({ statut: 'succes', transactionId: transactionId || null, payeAt: new Date() });
+
+    return { success: true, message: "Paiement confirmé avec succès", paiement };
+  }
+
+  static async rembourserPaiement(id, raison) {
+    const paiement = await Paiement.findByPk(id);
+    if (!paiement) {
+      return { success: false, message: "Paiement introuvable" };
+    }
+
+    if (paiement.statut !== 'succes') {
+      return { success: false, message: "Seul un paiement réussi peut être remboursé" };
+    }
+
+    // NOTE : l'appel à l'API de l'opérateur de paiement (Wave / Orange Money / carte)
+    // n'est pas implémenté ici — à brancher selon le prestataire retenu.
+    await paiement.update({ statut: 'rembourse' });
+
+    return { success: true, message: "Paiement remboursé avec succès", paiement };
+  }
+
+  static async getRevenusTotal({ dateDebut, dateFin } = {}) {
+    const where = { statut: 'succes' };
+    if (dateDebut || dateFin) {
+      where.createdAt = {};
+      if (dateDebut) where.createdAt[Op.gte] = new Date(dateDebut);
+      if (dateFin) where.createdAt[Op.lte] = new Date(dateFin);
+    }
+
+    const paiements = await Paiement.findAll({ where });
+    const total = paiements.reduce((sum, p) => sum + Number(p.montant), 0);
+
+    return { success: true, total, nbTransactions: paiements.length };
+  }
+}
+
+module.exports = GestionPaiementService;

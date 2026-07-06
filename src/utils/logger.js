@@ -1,11 +1,29 @@
-﻿// ─────────────────────────────────────────────────────────────
-// utils/logger.js — Winston logger
-// ─────────────────────────────────────────────────────────────
+const { createLogger, format, transports } = require('winston');
+const { combine, timestamp, printf, colorize, errors } = format;
 
-// TODO: importer winston
-// TODO: Configurer les transports :
-//   - Console (colorisé) en développement
-//   - Fichier logs/error.log pour les erreurs
-//   - Fichier logs/combined.log pour tout
-// TODO: Ne jamais logger les champs : password, token, code, cardNumber
-// module.exports = logger
+const isProd = process.env.NODE_ENV === 'production';
+
+const devFormat = combine(
+  colorize(),
+  timestamp({ format: 'HH:mm:ss' }),
+  errors({ stack: true }),
+  printf(({ level, message, timestamp, stack }) =>
+    stack
+      ? `${timestamp} ${level}: ${message}\n${stack}`
+      : `${timestamp} ${level}: ${message}`
+  )
+);
+
+const prodFormat = combine(
+  timestamp(),
+  errors({ stack: true }),
+  format.json()
+);
+
+const logger = createLogger({
+  level: isProd ? 'info' : 'debug',
+  format: isProd ? prodFormat : devFormat,
+  transports: [new transports.Console()],
+});
+
+module.exports = logger;

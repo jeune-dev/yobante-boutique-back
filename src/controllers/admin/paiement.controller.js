@@ -1,17 +1,52 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // controllers/admin/paiement.controller.js
 // ─────────────────────────────────────────────────────────────
-// const paiementService = require('../../services/admin/paiement.service')
+const GestionPaiementService = require('../../services/admin/paiement.service');
+const ApiResponse = require('../../utils/ApiResponse');
+const logger = require('../../config/logger');
 
-// TODO: getAll(req, res, next)
-//   - Extraire filtres et pagination depuis req.query
-//   - Appeler paiementService.getAllPaiements(filters, pagination)
-//   - Retourner 200 + { paiements, totalPages, count }
+exports.getAll = async (req, res) => {
+  try {
+    const result = await GestionPaiementService.getAllPaiements(req.query);
+    return ApiResponse.success(200, res, 'Paiements récupérés', {
+      paiements: result.paiements,
+      pagination: result.pagination,
+    });
+  } catch (err) {
+    logger.error('Erreur getAll paiements :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération des paiements');
+  }
+};
 
-// TODO: getOne(req, res, next)
-//   - Appeler paiementService.getPaiementById(req.params.id)
-//   - Retourner 200 + paiement
+exports.getOne = async (req, res) => {
+  try {
+    const result = await GestionPaiementService.getPaiementById(req.params.id);
+    if (!result.success) return ApiResponse.notFound(res, result.message);
+    return ApiResponse.success(200, res, 'Paiement récupéré', { paiement: result.paiement });
+  } catch (err) {
+    logger.error('Erreur getOne paiement :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération du paiement');
+  }
+};
 
-// TODO: rembourser(req, res, next)
-//   - Appeler paiementService.rembourserPaiement(req.params.id, req.body.raison)
-//   - Retourner 200 + paiement mis à jour
+exports.confirmer = async (req, res) => {
+  try {
+    const result = await GestionPaiementService.confirmerPaiement(req.params.id, req.body.transactionId);
+    if (!result.success) return ApiResponse.badRequest(res, result.message);
+    return ApiResponse.success(200, res, result.message, { paiement: result.paiement });
+  } catch (err) {
+    logger.error('Erreur confirmation paiement :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la confirmation du paiement');
+  }
+};
+
+exports.rembourser = async (req, res) => {
+  try {
+    const result = await GestionPaiementService.rembourserPaiement(req.params.id, req.body.raison);
+    if (!result.success) return ApiResponse.badRequest(res, result.message);
+    return ApiResponse.success(200, res, result.message, { paiement: result.paiement });
+  } catch (err) {
+    logger.error('Erreur remboursement paiement :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors du remboursement');
+  }
+};

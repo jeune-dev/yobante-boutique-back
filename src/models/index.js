@@ -3,9 +3,9 @@
 // ─────────────────────────────────────────────────────────────
 
 const sequelize = require('../config/db');
-const User = require('./user.model');
-const Categorie = require('./categorie.model');
-const Produit = require('./produit.model');
+const User = require('./User.model');
+const Categorie = require('./Categorie.model');
+const Produit = require('./Produit.model');
 const Commande = require('./commande.model');
 const CommandeItem = require('./commandeItem.model');
 const Paiement = require('./paiement.model');

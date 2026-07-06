@@ -1,13 +1,12 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // routes/admin/avis.route.js   — Préfixe : /api/admin/avis
 // ─────────────────────────────────────────────────────────────
-// const router = require('express').Router()
-// const ctrl = require('../../controllers/admin/avis.controller')
-// const { auth } = require('../../middlewares/auth.middleware')
-// const { admin } = require('../../middlewares/admin.middleware')
+const router = require('express').Router();
+const ctrl = require('../../controllers/admin/avis.controller');
+const adminMiddleware = require('../../middlewares/admin.middleware');
 
-// GET    /api/admin/avis                   -> ctrl.getAll    [auth, admin]
-// PATCH  /api/admin/avis/:id/approuver     -> ctrl.approuver [auth, admin]
-// DELETE /api/admin/avis/:id               -> ctrl.remove    [auth, admin]
+router.get('/',                adminMiddleware, ctrl.getAll);
+router.patch('/:id/approuver', adminMiddleware, ctrl.approuver);
+router.delete('/:id',          adminMiddleware, ctrl.remove);
 
-// module.exports = router
+module.exports = router;

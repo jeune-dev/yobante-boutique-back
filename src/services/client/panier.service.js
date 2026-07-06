@@ -1,36 +1,96 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // services/client/panier.service.js
 // ─────────────────────────────────────────────────────────────
+const { Panier, Produit } = require('../../models');
 
-// TODO: getPanier(userId)
-//   - Récupérer toutes les lignes Panier de l'user avec Produit (nom, prix, images, stock)
-//   - Calculer le sous-total par ligne et le total général
-//   - Retourner { items, sousTotal, fraisLivraison, total }
+const FRAIS_LIVRAISON = 2000; // FCFA, forfait fixe
 
-// TODO: ajouterAuPanier(userId, produitId, quantite)
-//   - Vérifier que le produit existe et est actif
-//   - Vérifier que le stock est suffisant
-//   - Si le produit est déjà dans le panier : incrémenter la quantité
-//   - Sinon : créer une nouvelle ligne Panier
-//   - Retourner le panier mis à jour
+class PanierService {
 
-// TODO: modifierQuantite(userId, produitId, quantite)
-//   - Vérifier que la ligne Panier existe
-//   - Vérifier que le stock est suffisant pour la nouvelle quantité
-//   - Mettre à jour la quantité
-//   - Si quantite=0 : supprimer la ligne
-//   - Retourner le panier mis à jour
+  static async _buildPanier(userId) {
+    const items = await Panier.findAll({
+      where: { userId },
+      include: [{ model: Produit, as: 'produit' }],
+      order: [['createdAt', 'ASC']],
+    });
 
-// TODO: retirerDuPanier(userId, produitId)
-//   - Vérifier que la ligne Panier existe pour cet user
-//   - Supprimer la ligne
-//   - Retourner un message de succès
+    const lignes = items.map((item) => ({
+      id: item.id,
+      produit: item.produit,
+      quantite: item.quantite,
+      sousTotal: Number(item.produit.prix) * item.quantite,
+    }));
 
-// TODO: viderPanier(userId)
-//   - Supprimer toutes les lignes Panier de l'user
-//   - Retourner un message de succès
+    const sousTotal = lignes.reduce((sum, l) => sum + l.sousTotal, 0);
+    const fraisLivraison = lignes.length ? FRAIS_LIVRAISON : 0;
 
-// TODO: calculerTotal(userId)
-//   - Récupérer le panier
-//   - Calculer sousTotal, fraisLivraison (selon poids ou règle métier), total
-//   - Retourner { sousTotal, fraisLivraison, total }
+    return { items: lignes, sousTotal, fraisLivraison, total: sousTotal + fraisLivraison };
+  }
+
+  static async getPanier(userId) {
+    const panier = await PanierService._buildPanier(userId);
+    return { success: true, ...panier };
+  }
+
+  static async ajouterAuPanier(userId, produitId, quantite = 1) {
+    const produit = await Produit.findOne({ where: { id: produitId, isActive: true } });
+    if (!produit) {
+      return { success: false, message: "Produit introuvable" };
+    }
+
+    if (produit.stock < quantite) {
+      return { success: false, message: "Stock insuffisant" };
+    }
+
+    const ligne = await Panier.findOne({ where: { userId, produitId } });
+    if (ligne) {
+      const nouvelleQuantite = ligne.quantite + quantite;
+      if (produit.stock < nouvelleQuantite) {
+        return { success: false, message: "Stock insuffisant" };
+      }
+      await ligne.update({ quantite: nouvelleQuantite });
+    } else {
+      await Panier.create({ userId, produitId, quantite });
+    }
+
+    const panier = await PanierService._buildPanier(userId);
+    return { success: true, message: "Produit ajouté au panier", ...panier };
+  }
+
+  static async modifierQuantite(userId, produitId, quantite) {
+    const ligne = await Panier.findOne({ where: { userId, produitId } });
+    if (!ligne) {
+      return { success: false, message: "Ce produit n'est pas dans votre panier" };
+    }
+
+    if (quantite === 0) {
+      await ligne.destroy();
+    } else {
+      const produit = await Produit.findByPk(produitId);
+      if (produit.stock < quantite) {
+        return { success: false, message: "Stock insuffisant" };
+      }
+      await ligne.update({ quantite });
+    }
+
+    const panier = await PanierService._buildPanier(userId);
+    return { success: true, message: "Panier mis à jour", ...panier };
+  }
+
+  static async retirerDuPanier(userId, produitId) {
+    const ligne = await Panier.findOne({ where: { userId, produitId } });
+    if (!ligne) {
+      return { success: false, message: "Ce produit n'est pas dans votre panier" };
+    }
+
+    await ligne.destroy();
+    return { success: true, message: "Produit retiré du panier" };
+  }
+
+  static async viderPanier(userId) {
+    await Panier.destroy({ where: { userId } });
+    return { success: true, message: "Panier vidé" };
+  }
+}
+
+module.exports = PanierService;

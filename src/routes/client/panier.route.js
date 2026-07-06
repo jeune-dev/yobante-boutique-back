@@ -1,15 +1,19 @@
-﻿// ─────────────────────────────────────────────────────────────
-// routes/client/panier.route.js   — Préfixe : /api/client/panier
 // ─────────────────────────────────────────────────────────────
-// const router = require('express').Router()
-// const ctrl = require('../../controllers/client/panier.controller')
-// const { auth } = require('../../middlewares/auth.middleware')
-// const { validate } = require('../../middlewares/validate.middleware')
+// routes/client/panier.route.js   — Préfixe : /api/panier
+// ─────────────────────────────────────────────────────────────
+const router = require('express').Router();
+const ctrl = require('../../controllers/client/panier.controller');
+const auth = require('../../middlewares/auth.middleware');
+const checkActiveUser = require('../../middlewares/checkActiveUser.middleware');
+const validate = require('../../middlewares/validate.middleware');
+const { ajouterPanierSchema, modifierPanierSchema } = require('../../validations/panier.validation');
 
-// GET    /api/client/panier                  -> ctrl.getPanier  [auth]
-// POST   /api/client/panier                  -> ctrl.ajouter    [auth, validate]
-// PUT    /api/client/panier/:produitId        -> ctrl.modifier   [auth, validate]
-// DELETE /api/client/panier/:produitId        -> ctrl.retirer    [auth]
-// DELETE /api/client/panier                  -> ctrl.vider      [auth]
+router.use(auth, checkActiveUser);
 
-// module.exports = router
+router.get('/',                  ctrl.getPanier);
+router.post('/',                 validate(ajouterPanierSchema), ctrl.ajouter);
+router.put('/:produitId',        validate(modifierPanierSchema), ctrl.modifier);
+router.delete('/:produitId',     ctrl.retirer);
+router.delete('/',               ctrl.vider);
+
+module.exports = router;

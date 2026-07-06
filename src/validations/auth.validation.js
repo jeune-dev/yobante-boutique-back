@@ -1,12 +1,57 @@
 ﻿// ─────────────────────────────────────────────────────────────
 // validations/auth.validation.js — Schémas Joi pour l'auth
 // ─────────────────────────────────────────────────────────────
+const Joi = require('joi');
 
-// TODO: registerSchema — nom, prenom, email (email()), password (min 8, majuscule, chiffre), telephone
-// TODO: verifyEmailSchema — userId ou email, code (6 chiffres)
-// TODO: loginSchema — email, password
-// TODO: forgotPasswordSchema — email
-// TODO: resetPasswordSchema — userId ou email, code, newPassword
-// TODO: changePasswordSchema — oldPassword, newPassword
+const motDePasse = Joi.string()
+  .min(8)
+  .pattern(/^(?=.*[A-Z])(?=.*\d).+$/)
+  .messages({
+    'string.pattern.base': 'Le mot de passe doit contenir au moins une majuscule et un chiffre',
+  });
 
-// module.exports = { registerSchema, verifyEmailSchema, loginSchema, ... }
+const registerSchema = Joi.object({
+  nom: Joi.string().trim().max(100).required(),
+  prenom: Joi.string().trim().max(100).required(),
+  email: Joi.string().trim().email().required(),
+  password: motDePasse.required(),
+  telephone: Joi.string().trim().optional().allow('', null),
+});
+
+const loginSchema = Joi.object({
+  identifiant: Joi.string().trim().required(),
+  password: Joi.string().required(),
+});
+
+const refreshSchema = Joi.object({
+  refreshToken: Joi.string().required(),
+});
+
+const logoutSchema = Joi.object({
+  refreshToken: Joi.string().optional().allow('', null),
+});
+
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().trim().email().required(),
+});
+
+const resetPasswordSchema = Joi.object({
+  email: Joi.string().trim().email().required(),
+  otp: Joi.string().trim().min(6).max(12).required(),
+  newPassword: motDePasse.required(),
+});
+
+const changePasswordSchema = Joi.object({
+  oldPassword: Joi.string().required(),
+  newPassword: motDePasse.required(),
+});
+
+module.exports = {
+  registerSchema,
+  loginSchema,
+  refreshSchema,
+  logoutSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
+};

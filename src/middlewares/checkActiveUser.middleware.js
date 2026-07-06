@@ -1,9 +1,16 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // middlewares/checkActiveUser.middleware.js
 // ─────────────────────────────────────────────────────────────
+const checkActiveUser = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Utilisateur non authentifié' });
+  }
 
-// TODO: checkActiveUser(req, res, next)
-//   - Vérifier que req.user.isActive === true
-//   - Si non : retourner 403 avec message 'Votre compte a été désactivé'
-//   - Si oui : appeler next()
-//   - Ce middleware s'utilise après auth.middleware
+  if (!req.user.isActive) {
+    return res.status(403).json({ message: 'Votre compte a été désactivé. Veuillez contacter le support.' });
+  }
+
+  next();
+};
+
+module.exports = checkActiveUser;

@@ -1,24 +1,60 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // controllers/admin/categorie.controller.js
 // ─────────────────────────────────────────────────────────────
-// const categorieService = require('../../services/admin/categorie.service')
+const GestionCategorieService = require('../../services/admin/categorie.service');
+const ApiResponse = require('../../utils/ApiResponse');
+const logger = require('../../config/logger');
 
-// TODO: create(req, res, next)
-//   - Appeler categorieService.createCategorie(req.body)
-//   - Retourner 201 + catégorie créée
+exports.create = async (req, res) => {
+  try {
+    const result = await GestionCategorieService.createCategorie(req.body, req.file);
+    if (!result.success) return ApiResponse.badRequest(res, result.message);
+    return ApiResponse.success(201, res, result.message, { categorie: result.categorie });
+  } catch (err) {
+    logger.error('Erreur création catégorie :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la création de la catégorie');
+  }
+};
 
-// TODO: getAll(req, res, next)
-//   - Appeler categorieService.getAllCategories()
-//   - Retourner 200 + arbre de catégories
+exports.getAll = async (req, res) => {
+  try {
+    const result = await GestionCategorieService.getAllCategories();
+    return ApiResponse.success(200, res, result.message, { categories: result.categories });
+  } catch (err) {
+    logger.error('Erreur récupération catégories :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération des catégories');
+  }
+};
 
-// TODO: getOne(req, res, next)
-//   - Appeler categorieService.getCategorieById(req.params.id)
-//   - Retourner 200 + catégorie
+exports.getOne = async (req, res) => {
+  try {
+    const result = await GestionCategorieService.getCategorieById(req.params.id);
+    if (!result.success) return ApiResponse.notFound(res, result.message);
+    return ApiResponse.success(200, res, 'Catégorie récupérée', { categorie: result.categorie });
+  } catch (err) {
+    logger.error('Erreur récupération catégorie :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération de la catégorie');
+  }
+};
 
-// TODO: update(req, res, next)
-//   - Appeler categorieService.updateCategorie(req.params.id, req.body)
-//   - Retourner 200 + catégorie mise à jour
+exports.update = async (req, res) => {
+  try {
+    const result = await GestionCategorieService.updateCategorie(req.params.id, req.body, req.file);
+    if (!result.success) return ApiResponse.notFound(res, result.message);
+    return ApiResponse.success(200, res, result.message, { categorie: result.categorie });
+  } catch (err) {
+    logger.error('Erreur mise à jour catégorie :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la mise à jour de la catégorie');
+  }
+};
 
-// TODO: remove(req, res, next)
-//   - Appeler categorieService.deleteCategorie(req.params.id)
-//   - Retourner 200 + message
+exports.remove = async (req, res) => {
+  try {
+    const result = await GestionCategorieService.deleteCategorie(req.params.id);
+    if (!result.success) return ApiResponse.badRequest(res, result.message);
+    return ApiResponse.success(200, res, result.message);
+  } catch (err) {
+    logger.error('Erreur suppression catégorie :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la suppression de la catégorie');
+  }
+};

@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "IAAB",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "3500", "--directory", "C:\\Users\\User\\Desktop\\Mes_Projets\\Projet_Personnel\\IAAB"],
+      "port": 3500
+    },
+    {
+      "name": "yobante-backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["src/index.js"],
+      "port": 5000
+    },
+    {
+      "name": "thiam-gold",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5566", "--directory", "C:\\Users\\User\\Desktop\\Mes_Projets\\Projet_Personnel\\THIAM_GOLD"],
+      "port": 5566
+    }
+  ]
+}

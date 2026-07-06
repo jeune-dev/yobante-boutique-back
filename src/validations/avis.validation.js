@@ -1,8 +1,17 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // validations/avis.validation.js — Schémas Joi pour les avis
 // ─────────────────────────────────────────────────────────────
+const Joi = require('joi');
 
-// TODO: avisSchema — produitId (requis, integer), note (integer, min 1, max 5, requis),
-//                    commentaire (string optionnel, max 1000 caractères)
+const avisSchema = Joi.object({
+  produitId: Joi.string().uuid().required(),
+  note: Joi.number().integer().min(1).max(5).required(),
+  commentaire: Joi.string().trim().max(1000).allow('', null).optional(),
+});
 
-// module.exports = { avisSchema }
+const updateAvisSchema = Joi.object({
+  note: Joi.number().integer().min(1).max(5).optional(),
+  commentaire: Joi.string().trim().max(1000).allow('', null).optional(),
+}).min(1);
+
+module.exports = { avisSchema, updateAvisSchema };

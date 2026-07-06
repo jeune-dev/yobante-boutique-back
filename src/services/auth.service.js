@@ -1,55 +1,284 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // services/auth.service.js
 // ─────────────────────────────────────────────────────────────
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
+const { User, RefreshToken, UserOtp, sequelize } = require('../models');
+const { bcryptConfig, jwtConfig } = require('../config/security');
+const { sendResetPasswordEmail } = require('../utils/mailer');
 
-// TODO: register(data)
-//   - Vérifier que l'email n'existe pas déjà
-//   - Hasher le mot de passe avec bcrypt (saltRounds=12)
-//   - Créer l'utilisateur en base (isVerified=false)
-//   - Générer un OTP 6 chiffres, le hasher, l'enregistrer en UserOtp (expire 10min)
-//   - Envoyer l'OTP par email via mailer
-//   - Retourner l'utilisateur créé (sans password)
+function _generateOtp(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const bytes = crypto.randomBytes(length);
+  let otp = '';
+  for (let i = 0; i < length; i++) otp += chars[bytes[i] % chars.length];
+  return otp;
+}
 
-// TODO: verifyEmail(userId, code)
-//   - Récupérer l'OTP non utilisé de type 'email_verification' pour cet user
-//   - Vérifier que l'OTP n'est pas expiré
-//   - Comparer le code fourni avec le hash stocké
-//   - Marquer isVerified=true sur l'user et isUsed=true sur l'OTP
-//   - Retourner un message de succès
+// ─── Helpers tokens ────────────────────────────────────────────────────────────
 
-// TODO: login(email, password)
-//   - Trouver l'user par email
-//   - Vérifier que isActive=true et isVerified=true
-//   - Comparer le password avec bcrypt.compare
-//   - Générer access token (JWT, expire 15min) et refresh token (expire 7j)
-//   - Sauvegarder le refresh token hashé en base (RefreshToken)
-//   - Retourner { accessToken, user }  — refresh token via cookie httpOnly
+function _hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
-// TODO: refreshToken(token)
-//   - Trouver le RefreshToken en base (non expiré)
-//   - Vérifier la signature JWT avec JWT_REFRESH_SECRET
-//   - Générer un nouvel access token
-//   - Retourner { accessToken }
+function _generateAccessToken(user) {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    jwtConfig.secret,
+    { expiresIn: jwtConfig.expiresIn }
+  );
+}
 
-// TODO: logout(userId, token)
-//   - Supprimer le RefreshToken correspondant en base
-//   - Retourner un message de succès
+function _generateRefreshToken(user) {
+  return jwt.sign(
+    { id: user.id, type: 'refresh' },
+    jwtConfig.refreshSecret,
+    { expiresIn: jwtConfig.refreshExpiresIn }
+  );
+}
 
-// TODO: forgotPassword(email)
-//   - Trouver l'user par email (ne pas révéler si inexistant)
-//   - Générer un OTP de type 'reset_password', le hasher, le stocker
-//   - Envoyer l'OTP par email
-//   - Retourner un message générique
+/** Stocke un refresh token dans la DB (hash uniquement) et purge les anciens expirés. */
+async function _storeRefreshToken(userId, refreshToken, transaction) {
+  const decoded = jwt.decode(refreshToken);
+  const expiresAt = new Date(decoded.exp * 1000);
 
-// TODO: resetPassword(userId, code, newPassword)
-//   - Récupérer l'OTP non utilisé de type 'reset_password'
-//   - Vérifier expiration et correspondance du code
-//   - Hasher le nouveau mot de passe et mettre à jour l'user
-//   - Marquer l'OTP isUsed=true
-//   - Invalider tous les refresh tokens de cet user
+  await RefreshToken.create(
+    { token: _hashToken(refreshToken), userId, expiresAt },
+    { transaction }
+  );
 
-// TODO: changePassword(userId, oldPassword, newPassword)
-//   - Récupérer l'user
-//   - Vérifier que oldPassword correspond au hash actuel
-//   - Hasher newPassword et mettre à jour
-//   - Invalider tous les refresh tokens
+  // Purge des tokens expirés pour cet utilisateur (maintenance silencieuse)
+  await RefreshToken.destroy({
+    where: { userId, expiresAt: { [Op.lt]: new Date() } },
+    transaction
+  });
+}
+
+// ─── AuthService ───────────────────────────────────────────────────────────────
+
+class AuthService {
+
+  // -------------------- INSCRIPTION --------------------
+  static async register({ nom, prenom, email, password, telephone }) {
+    const t = await sequelize.transaction();
+
+    try {
+      const emailClean = email.trim().toLowerCase();
+
+      const exist = await User.findOne({ where: { email: emailClean }, transaction: t });
+      if (exist) {
+        await t.rollback();
+        return { success: false, message: "Cet email est déjà utilisé" };
+      }
+
+      const hashedPassword = await bcrypt.hash(password, bcryptConfig.saltRounds);
+
+      const user = await User.create({
+        nom,
+        prenom,
+        email: emailClean,
+        password: hashedPassword,
+        telephone,
+        isVerified: true,
+      }, { transaction: t });
+
+      await t.commit();
+
+      return { success: true, message: "Inscription réussie", user };
+
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+
+  // -------------------- CONNEXION --------------------
+  static async login({ identifiant, password }) {
+    const isEmail = /\S+@\S+\.\S+/.test(identifiant);
+    const user = await User.findOne({
+      where: isEmail ? { email: identifiant.trim().toLowerCase() } : { telephone: identifiant },
+    });
+
+    if (!user)
+      return { success: false, error: 'Identifiant ou mot de passe incorrect' };
+
+    if (!user.isActive)
+      return { success: false, error: 'Votre compte a été désactivé. Veuillez contacter le support.' };
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid)
+      return { success: false, error: 'Identifiant ou mot de passe incorrect' };
+
+    const accessToken = _generateAccessToken(user);
+    const refreshToken = _generateRefreshToken(user);
+
+    const t = await sequelize.transaction();
+    try {
+      await _storeRefreshToken(user.id, refreshToken, t);
+      await t.commit();
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+
+    return { success: true, token: accessToken, refreshToken, user };
+  }
+
+  // -------------------- REFRESH TOKEN --------------------
+  /**
+   * Émet une nouvelle paire access + refresh token (rotation).
+   * L'ancien refresh token est marqué revoked (jamais supprimé) : un token déjà utilisé
+   * qui est rejoué est un signal de vol/replay qu'un hard-delete effacerait.
+   */
+  static async refresh({ refreshToken }) {
+    if (!refreshToken) return { success: false, error: 'Refresh token manquant' };
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, jwtConfig.refreshSecret);
+    } catch (err) {
+      return { success: false, error: 'Refresh token invalide ou expiré' };
+    }
+
+    if (decoded.type !== 'refresh')
+      return { success: false, error: 'Type de token invalide' };
+
+    const tokenHash = _hashToken(refreshToken);
+    const storedToken = await RefreshToken.findOne({ where: { token: tokenHash } });
+
+    if (!storedToken)
+      return { success: false, error: 'Refresh token inconnu' };
+
+    if (storedToken.revoked)
+      return { success: false, error: 'Refresh token révoqué' };
+
+    if (storedToken.expiresAt < new Date())
+      return { success: false, error: 'Refresh token expiré' };
+
+    const user = await User.findByPk(decoded.id);
+    if (!user)
+      return { success: false, error: 'Utilisateur introuvable' };
+
+    if (!user.isActive)
+      return { success: false, error: 'Compte inactif' };
+
+    const t = await sequelize.transaction();
+    try {
+      await storedToken.update({ revoked: true }, { transaction: t });
+
+      const newAccessToken = _generateAccessToken(user);
+      const newRefreshToken = _generateRefreshToken(user);
+      await _storeRefreshToken(user.id, newRefreshToken, t);
+
+      await t.commit();
+
+      return { success: true, token: newAccessToken, refreshToken: newRefreshToken };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+
+  // -------------------- DÉCONNEXION --------------------
+  /** Révoque le refresh token fourni (déconnexion propre). */
+  static async logout({ refreshToken }) {
+    if (!refreshToken) return { success: true };
+
+    const tokenHash = _hashToken(refreshToken);
+    await RefreshToken.update({ revoked: true }, { where: { token: tokenHash, revoked: false } });
+
+    return { success: true };
+  }
+
+  // -------------------- MOT DE PASSE OUBLIÉ (OTP) --------------------
+  static async forgotPassword(email) {
+    const emailClean = email.trim().toLowerCase();
+    const user = await User.findOne({ where: { email: emailClean } });
+
+    if (!user || user.role === 'ADMIN') {
+      // Réponse générique pour ne pas révéler l'existence du compte
+      return { success: true, message: "Si un compte existe avec cet email, un code de réinitialisation a été envoyé." };
+    }
+
+    const otp = _generateOtp(8);
+    const otpHash = await bcrypt.hash(otp, bcryptConfig.saltRounds);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+
+    await UserOtp.destroy({ where: { userId: user.id, type: 'reset_password' } });
+    await UserOtp.create({ userId: user.id, code: otpHash, type: 'reset_password', expiresAt });
+
+    await sendResetPasswordEmail(user.email, otp);
+
+    return { success: true, message: "Un code de réinitialisation a été envoyé à votre adresse email." };
+  }
+
+  // -------------------- RÉINITIALISATION MOT DE PASSE (OTP) --------------------
+  static async resetPassword(email, otpRecu, newPassword) {
+    const emailClean = email.trim().toLowerCase();
+    const user = await User.findOne({ where: { email: emailClean } });
+    if (!user) {
+      return { success: false, message: "Aucun compte associé à cet email." };
+    }
+
+    const otpRecord = await UserOtp.findOne({
+      where: { userId: user.id, type: 'reset_password', isUsed: false },
+      order: [['createdAt', 'DESC']],
+    });
+    if (!otpRecord) {
+      return { success: false, message: "Aucun code de réinitialisation trouvé. Veuillez refaire une demande." };
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      return { success: false, message: "Le code a expiré. Veuillez refaire une demande." };
+    }
+
+    const isValid = await bcrypt.compare(otpRecu, otpRecord.code);
+    if (!isValid) {
+      return { success: false, message: "Code de réinitialisation incorrect." };
+    }
+
+    const t = await sequelize.transaction();
+    try {
+      const hashedPassword = await bcrypt.hash(newPassword, bcryptConfig.saltRounds);
+      await user.update({ password: hashedPassword }, { transaction: t });
+      await otpRecord.update({ isUsed: true }, { transaction: t });
+      await RefreshToken.update({ revoked: true }, { where: { userId: user.id, revoked: false }, transaction: t });
+
+      await t.commit();
+      return { success: true, message: "Mot de passe réinitialisé avec succès." };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+
+  // -------------------- CHANGER MOT DE PASSE --------------------
+  static async changePassword(userId, oldPassword, newPassword) {
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return { success: false, message: "Utilisateur introuvable." };
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return { success: false, message: "Mot de passe actuel incorrect." };
+    }
+
+    const t = await sequelize.transaction();
+    try {
+      const hashedPassword = await bcrypt.hash(newPassword, bcryptConfig.saltRounds);
+      await user.update({ password: hashedPassword }, { transaction: t });
+      await RefreshToken.update({ revoked: true }, { where: { userId: user.id, revoked: false }, transaction: t });
+
+      await t.commit();
+      return { success: true, message: "Mot de passe modifié avec succès." };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
+}
+
+module.exports = AuthService;

@@ -1,14 +1,16 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // routes/admin/dashboard.route.js   — Préfixe : /api/admin/dashboard
 // ─────────────────────────────────────────────────────────────
-// const router = require('express').Router()
-// const ctrl = require('../../controllers/admin/dashboard.controller')
-// const { auth } = require('../../middlewares/auth.middleware')
-// const { admin } = require('../../middlewares/admin.middleware')
+const router = require('express').Router();
+const ctrl = require('../../controllers/admin/dashboard.controller');
+const adminMiddleware = require('../../middlewares/admin.middleware');
 
-// GET  /api/admin/dashboard/stats          -> ctrl.getStats             [auth, admin]
-// GET  /api/admin/dashboard/revenus        -> ctrl.getRevenus           [auth, admin]
-// GET  /api/admin/dashboard/top-produits   -> ctrl.getProduitsPlusVendus[auth, admin]
-// GET  /api/admin/dashboard/stock-alertes  -> ctrl.getStockAlertes      [auth, admin]
+router.get('/stats',              adminMiddleware, ctrl.getStats);
+router.get('/commandes-statut',   adminMiddleware, ctrl.getCommandesParStatut);
+router.get('/revenus',            adminMiddleware, ctrl.getRevenus);
+router.get('/top-produits',       adminMiddleware, ctrl.getProduitsPlusVendus);
+router.get('/clients-actifs',     adminMiddleware, ctrl.getClientsActifs);
+router.get('/commandes-recentes', adminMiddleware, ctrl.getCommandesRecentes);
+router.get('/stock-alertes',      adminMiddleware, ctrl.getStockAlertes);
 
-// module.exports = router
+module.exports = router;

@@ -1,19 +1,22 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // middlewares/upload.middleware.js
 // ─────────────────────────────────────────────────────────────
+const multer = require('multer');
+const { uploadConfig } = require('../config/security');
 
-// TODO: importer multer
-// TODO: importer file-type pour valider les vrais MIME types
-// TODO: importer uploadConfig depuis ../config/security.js
+const fileFilter = (req, file, cb) => {
+  if (uploadConfig.allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Type de fichier non autorisé. Formats acceptés : JPEG, PNG, WEBP'), false);
+  }
+};
 
-// TODO: Configurer le stockage mémoire (multer.memoryStorage())
-//   - Ne pas écrire sur le disque, les fichiers iront sur Cloudinary
+// memoryStorage : fichier en RAM uniquement, jamais écrit sur disque
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: uploadConfig.maxFileSize },
+  fileFilter,
+});
 
-// TODO: Filtre de fichiers (fileFilter)
-//   - Lire les magic bytes du buffer pour obtenir le vrai type MIME
-//   - Accepter uniquement : image/jpeg, image/png, image/webp
-//   - Rejeter avec une erreur explicite sinon
-
-// TODO: upload = multer({ storage, fileFilter, limits: { fileSize: uploadConfig.maxFileSize } })
-
-// module.exports = { upload }
+module.exports = upload;

@@ -1,0 +1,221 @@
+// tests/unit/services/auth.service.test.js
+
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const userFixture = require('../../fixtures/user.fixture');
+
+// Mock les dépendances AVANT d'importer le service
+jest.mock('bcryptjs');
+jest.mock('jsonwebtoken');
+
+// Mock sequelize
+const mockTransaction = {
+  rollback: jest.fn().mockResolvedValue(undefined),
+  commit: jest.fn().mockResolvedValue(undefined)
+};
+
+const mockSequelize = {
+  transaction: jest.fn().mockResolvedValue(mockTransaction)
+};
+
+const mockUser = {
+  findOne: jest.fn(),
+  findByPk: jest.fn(),
+  create: jest.fn()
+};
+
+const mockRefreshToken = {
+  findOne: jest.fn(),
+  create: jest.fn(),
+  destroy: jest.fn(),
+  update: jest.fn()
+};
+
+const mockUserOtp = {
+  findOne: jest.fn(),
+  create: jest.fn(),
+  destroy: jest.fn()
+};
+
+jest.mock('../../../src/models', () => ({
+  User: mockUser,
+  RefreshToken: mockRefreshToken,
+  UserOtp: mockUserOtp,
+  sequelize: mockSequelize
+}));
+
+jest.mock('../../../src/utils/mailer');
+
+const AuthService = require('../../../src/services/auth.service');
+
+describe('AuthService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTransaction.rollback.mockClear();
+    mockTransaction.commit.mockClear();
+  });
+
+  describe('register', () => {
+    it('devrait enregistrer un utilisateur avec données valides', async () => {
+      const { registerData } = userFixture;
+      const hashedPassword = '$2a$12$hashedpassword';
+
+      mockSequelize.transaction.mockResolvedValue(mockTransaction);
+      mockUser.findOne.mockResolvedValue(null);
+      mockUser.create.mockResolvedValue({
+        ...registerData,
+        id: 'generated-id',
+        password: hashedPassword,
+        role: 'CLIENT',
+        isVerified: true
+      });
+
+      bcrypt.hash.mockResolvedValue(hashedPassword);
+
+      const result = await AuthService.register(registerData);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Inscription réussie');
+      expect(mockUser.create).toHaveBeenCalled();
+      expect(bcrypt.hash).toHaveBeenCalledWith(registerData.password, 12);
+      expect(mockTransaction.commit).toHaveBeenCalled();
+    });
+
+    it('devrait refuser un email déjà utilisé', async () => {
+      const { registerData } = userFixture;
+      
+      mockSequelize.transaction.mockResolvedValue(mockTransaction);
+      mockUser.findOne.mockResolvedValue(userFixture.validUser);
+
+      const result = await AuthService.register(registerData);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Cet email est déjà utilisé');
+      expect(mockUser.create).not.toHaveBeenCalled();
+      expect(mockTransaction.rollback).toHaveBeenCalled();
+    });
+
+    it('devrait nettoyer l\'email (trim et lowercase)', async () => {
+      const data = {
+        ...userFixture.registerData,
+        email: '  JOHN.DOE@EXAMPLE.COM  '
+      };
+
+      mockSequelize.transaction.mockResolvedValue(mockTransaction);
+      mockUser.findOne.mockResolvedValue(null);
+      bcrypt.hash.mockResolvedValue('hashedpwd');
+      mockUser.create.mockResolvedValue({ ...data, password: 'hashedpwd' });
+
+      await AuthService.register(data);
+
+      expect(mockUser.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            email: 'john.doe@example.com'
+          })
+        })
+      );
+    });
+  });
+
+  describe('login', () => {
+    it('devrait connecter un utilisateur avec email et mot de passe valides', async () => {
+      const { validUser } = userFixture;
+      const token = 'access-token';
+      const refreshToken = 'refresh-token';
+
+      mockSequelize.transaction.mockResolvedValue(mockTransaction);
+      mockUser.findOne.mockResolvedValue(validUser);
+      bcrypt.compare.mockResolvedValue(true);
+      mockRefreshToken.create.mockResolvedValue({});
+      mockRefreshToken.destroy.mockResolvedValue(undefined);
+      
+      jwt.sign.mockImplementation((payload, secret, options) => {
+        if (options.expiresIn === '1h') return token;
+        return refreshToken;
+      });
+      jwt.decode.mockReturnValue({ exp: Math.floor(Date.now() / 1000) + 3600 });
+
+      const result = await AuthService.login({
+        identifiant: validUser.email,
+        password: 'password123'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.token).toBe(token);
+      expect(bcrypt.compare).toHaveBeenCalledWith('password123', validUser.password);
+    });
+
+    it('devrait refuser un mot de passe incorrect', async () => {
+      const { validUser } = userFixture;
+      mockUser.findOne.mockResolvedValue(validUser);
+      bcrypt.compare.mockResolvedValue(false);
+
+      const result = await AuthService.login({
+        identifiant: validUser.email,
+        password: 'wrongpassword'
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('devrait refuser un utilisateur inactif', async () => {
+      const { inactiveUser } = userFixture;
+      mockUser.findOne.mockResolvedValue(inactiveUser);
+
+      const result = await AuthService.login({
+        identifiant: inactiveUser.email,
+        password: 'password123'
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('refresh', () => {
+    it('devrait refuser un refresh token invalide', async () => {
+      mockRefreshToken.findOne.mockResolvedValue(null);
+      jwt.verify.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      const result = await AuthService.refresh({ refreshToken: 'invalid-token' });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('changePassword', () => {
+    it('devrait changer le mot de passe avec l\'ancien mot de passe correct', async () => {
+      const userId = userFixture.validUser.id;
+      const oldPassword = 'oldPassword123';
+      const newPassword = 'newPassword456';
+
+      mockSequelize.transaction.mockResolvedValue(mockTransaction);
+      mockUser.findByPk.mockResolvedValue({
+        ...userFixture.validUser,
+        update: jest.fn().mockResolvedValue(true),
+      });
+      bcrypt.compare.mockResolvedValue(true);
+      bcrypt.hash.mockResolvedValue('hashed-new-password');
+
+      const result = await AuthService.changePassword(userId, oldPassword, newPassword);
+
+      expect(result.success).toBe(true);
+      expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 12);
+      expect(mockTransaction.commit).toHaveBeenCalled();
+    });
+
+    it('devrait refuser un ancien mot de passe incorrect', async () => {
+      const userId = userFixture.validUser.id;
+
+      mockSequelize.transaction.mockResolvedValue(mockTransaction);
+      mockUser.findByPk.mockResolvedValue(userFixture.validUser);
+      bcrypt.compare.mockResolvedValue(false);
+
+      const result = await AuthService.changePassword(userId, 'wrong', 'newPassword');
+
+      expect(result.success).toBe(false);
+    });
+  });
+});

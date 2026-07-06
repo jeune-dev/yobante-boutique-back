@@ -1,14 +1,18 @@
-﻿// ─────────────────────────────────────────────────────────────
-// routes/client/commande.route.js   — Préfixe : /api/client/commandes
 // ─────────────────────────────────────────────────────────────
-// const router = require('express').Router()
-// const ctrl = require('../../controllers/client/commande.controller')
-// const { auth } = require('../../middlewares/auth.middleware')
-// const { validate } = require('../../middlewares/validate.middleware')
+// routes/client/commande.route.js   — Préfixe : /api/commandes
+// ─────────────────────────────────────────────────────────────
+const router = require('express').Router();
+const ctrl = require('../../controllers/client/commande.controller');
+const auth = require('../../middlewares/auth.middleware');
+const checkActiveUser = require('../../middlewares/checkActiveUser.middleware');
+const validate = require('../../middlewares/validate.middleware');
+const { passerCommandeSchema } = require('../../validations/commande.validation');
 
-// GET    /api/client/commandes          -> ctrl.getMes   [auth]
-// POST   /api/client/commandes          -> ctrl.passer   [auth, validate]
-// GET    /api/client/commandes/:id      -> ctrl.getOne   [auth]
-// PATCH  /api/client/commandes/:id/annuler -> ctrl.annuler [auth]
+router.use(auth, checkActiveUser);
 
-// module.exports = router
+router.get('/',              ctrl.getMes);
+router.post('/',             validate(passerCommandeSchema), ctrl.passer);
+router.get('/:id',           ctrl.getOne);
+router.patch('/:id/annuler', ctrl.annuler);
+
+module.exports = router;

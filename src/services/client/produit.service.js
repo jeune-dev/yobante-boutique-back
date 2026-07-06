@@ -1,34 +1,152 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // services/client/produit.service.js
 // ─────────────────────────────────────────────────────────────
+const { Op } = require('sequelize');
+const { Produit, Categorie, Avis, User } = require('../../models');
+const paginate = require('../../utils/paginate');
 
-// TODO: getProduits(filters, pagination)
-//   - Uniquement les produits isActive=true
-//   - Filtres : categorieId, prixMin, prixMax, search (nom/description), isFeatured
-//   - Tri possible : prix asc/desc, date, popularité
-//   - Retourner { rows, count, totalPages }
+class ProduitService {
 
-// TODO: getProduitBySlug(slug)
-//   - Trouver le produit isActive=true par slug
-//   - Include Categorie et Avis approuvés avec note moyenne
-//   - Lever une erreur 404 si non trouvé
+  static async getProduits({ page, limit, categorieId, prixMin, prixMax, search, tri } = {}) {
+    const { page: p, limit: l, offset } = paginate(page, limit);
 
-// TODO: getProduitsFeatured()
-//   - Produits WHERE isFeatured=true AND isActive=true
-//   - Limiter à 10 résultats
-//   - Retourner la liste
+    const where = { isActive: true };
+    if (categorieId) where.categorieId = categorieId;
+    if (prixMin || prixMax) {
+      where.prix = {};
+      if (prixMin) where.prix[Op.gte] = prixMin;
+      if (prixMax) where.prix[Op.lte] = prixMax;
+    }
+    if (search) {
+      where[Op.or] = [
+        { nom: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
 
-// TODO: getProduitsByCategorie(slug, pagination)
-//   - Trouver la catégorie par slug
-//   - Récupérer ses produits actifs avec pagination
-//   - Retourner { rows, count, totalPages }
+    const order = {
+      prix_asc: [['prix', 'ASC']],
+      prix_desc: [['prix', 'DESC']],
+      recent: [['createdAt', 'DESC']],
+    }[tri] || [['createdAt', 'DESC']];
 
-// TODO: rechercherProduits(query)
-//   - Recherche LIKE sur nom et description
-//   - Uniquement produits actifs
-//   - Retourner la liste avec pagination
+    const { count, rows } = await Produit.findAndCountAll({
+      where,
+      include: [{ model: Categorie, as: 'categorie' }],
+      order,
+      limit: l,
+      offset,
+    });
 
-// TODO: getProduitsRecommandes(produitId, limit=6)
-//   - Trouver la catégorie du produit
-//   - Retourner d'autres produits de la même catégorie (excluant le produit actuel)
-//   - Retourner la liste
+    return {
+      success: true,
+      produits: rows,
+      pagination: { total: count, totalPages: Math.ceil(count / l), page: p, limit: l },
+    };
+  }
+
+  static async getProduitBySlug(slug) {
+    const produit = await Produit.findOne({
+      where: { slug, isActive: true },
+      include: [
+        { model: Categorie, as: 'categorie' },
+        {
+          model: Avis,
+          as: 'avis',
+          where: { isApproved: true },
+          required: false,
+          include: [{ model: User, as: 'user', attributes: ['id', 'nom', 'prenom', 'avatar'] }],
+        },
+      ],
+    });
+
+    if (!produit) {
+      return { success: false, message: "Produit introuvable" };
+    }
+
+    const avisApprouves = produit.avis || [];
+    const noteMoyenne = avisApprouves.length
+      ? avisApprouves.reduce((sum, a) => sum + a.note, 0) / avisApprouves.length
+      : 0;
+
+    return { success: true, produit, noteMoyenne };
+  }
+
+  static async getProduitsFeatured() {
+    const produits = await Produit.findAll({
+      where: { isFeatured: true, isActive: true },
+      include: [{ model: Categorie, as: 'categorie' }],
+      limit: 10,
+      order: [['createdAt', 'DESC']],
+    });
+
+    return { success: true, produits };
+  }
+
+  static async getProduitsByCategorie(slug, { page, limit } = {}) {
+    const categorie = await Categorie.findOne({ where: { slug, isActive: true } });
+    if (!categorie) {
+      return { success: false, message: "Catégorie introuvable" };
+    }
+
+    const { page: p, limit: l, offset } = paginate(page, limit);
+
+    const { count, rows } = await Produit.findAndCountAll({
+      where: { categorieId: categorie.id, isActive: true },
+      order: [['createdAt', 'DESC']],
+      limit: l,
+      offset,
+    });
+
+    return {
+      success: true,
+      categorie,
+      produits: rows,
+      pagination: { total: count, totalPages: Math.ceil(count / l), page: p, limit: l },
+    };
+  }
+
+  static async rechercherProduits({ query, page, limit } = {}) {
+    const { page: p, limit: l, offset } = paginate(page, limit);
+
+    const { count, rows } = await Produit.findAndCountAll({
+      where: {
+        isActive: true,
+        [Op.or]: [
+          { nom: { [Op.iLike]: `%${query}%` } },
+          { description: { [Op.iLike]: `%${query}%` } },
+        ],
+      },
+      order: [['createdAt', 'DESC']],
+      limit: l,
+      offset,
+    });
+
+    return {
+      success: true,
+      produits: rows,
+      pagination: { total: count, totalPages: Math.ceil(count / l), page: p, limit: l },
+    };
+  }
+
+  static async getProduitsRecommandes(produitId, limit = 6) {
+    const produit = await Produit.findByPk(produitId);
+    if (!produit) {
+      return { success: false, message: "Produit introuvable" };
+    }
+
+    const produits = await Produit.findAll({
+      where: {
+        categorieId: produit.categorieId,
+        isActive: true,
+        id: { [Op.ne]: produitId },
+      },
+      limit,
+      order: [['createdAt', 'DESC']],
+    });
+
+    return { success: true, produits };
+  }
+}
+
+module.exports = ProduitService;

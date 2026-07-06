@@ -1,46 +1,162 @@
-﻿// ─────────────────────────────────────────────────────────────
-// controllers/auth.controller.js
-// ─────────────────────────────────────────────────────────────
-// const authService = require('../services/auth.service')
+/**
+ * Auth Controller
+ * Gère l'authentification et la gestion de compte
+ */
+const AuthService = require('../services/auth.service');
+const ApiResponse = require('../utils/ApiResponse');
+const formatUser = require('../utils/formatUser');
+const logger = require('../config/logger');
 
-// TODO: register(req, res, next)
-//   - Récupérer req.body (nom, prenom, email, password, telephone)
-//   - Appeler authService.register(data)
-//   - Retourner 201 + message de succès
+/**
+ * POST /api/auth/register
+ * Créer un nouveau compte utilisateur
+ */
+exports.register = async (req, res) => {
+  const { nom, prenom, email, password, telephone } = req.body;
 
-// TODO: verifyEmail(req, res, next)
-//   - Récupérer req.body (userId ou email, code)
-//   - Appeler authService.verifyEmail(userId, code)
-//   - Retourner 200 + message
+  try {
+    const result = await AuthService.register({ nom, prenom, email, password, telephone });
 
-// TODO: login(req, res, next)
-//   - Récupérer req.body (email, password)
-//   - Appeler authService.login(email, password)
-//   - Poser le refresh token en cookie httpOnly
-//   - Retourner 200 + { accessToken, user }
+    if (!result.success) {
+      return ApiResponse.badRequest(res, result.message);
+    }
 
-// TODO: refreshToken(req, res, next)
-//   - Lire le refresh token depuis req.cookies
-//   - Appeler authService.refreshToken(token)
-//   - Retourner 200 + { accessToken }
+    return ApiResponse.success(201, res, result.message, {
+      user: formatUser(result.user),
+    });
+  } catch (err) {
+    logger.error("Erreur lors de l'inscription", { error: err.message });
+    return ApiResponse.internalServerError(res);
+  }
+};
 
-// TODO: logout(req, res, next)
-//   - Lire le refresh token depuis req.cookies
-//   - Appeler authService.logout(req.user.id, token)
-//   - Effacer le cookie
-//   - Retourner 200 + message
+/**
+ * POST /api/auth/login
+ * Connexion avec email et mot de passe
+ */
+exports.login = async (req, res) => {
+  const { identifiant, password } = req.body;
 
-// TODO: forgotPassword(req, res, next)
-//   - Récupérer req.body.email
-//   - Appeler authService.forgotPassword(email)
-//   - Retourner 200 + message générique
+  if (!identifiant || !password) {
+    return ApiResponse.badRequest(res, 'Identifiant et mot de passe obligatoires');
+  }
 
-// TODO: resetPassword(req, res, next)
-//   - Récupérer req.body (userId ou email, code, newPassword)
-//   - Appeler authService.resetPassword(...)
-//   - Retourner 200 + message
+  try {
+    const result = await AuthService.login({ identifiant, password });
 
-// TODO: changePassword(req, res, next)
-//   - Récupérer req.body (oldPassword, newPassword)
-//   - Appeler authService.changePassword(req.user.id, oldPassword, newPassword)
-//   - Retourner 200 + message
+    if (!result.success) {
+      return ApiResponse.badRequest(res, result.error || result.message);
+    }
+
+    return ApiResponse.success(200, res, result.message, {
+      token: result.token,
+      refreshToken: result.refreshToken,
+      user: formatUser(result.user),
+    });
+  } catch (err) {
+    logger.error('Erreur connexion', { error: err.message });
+    return ApiResponse.internalServerError(res);
+  }
+};
+
+/**
+ * POST /api/auth/refresh
+ * Renouveler le token d'accès avec un refresh token
+ */
+exports.refresh = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return ApiResponse.badRequest(res, 'refreshToken manquant');
+  }
+
+  try {
+    const result = await AuthService.refresh({ refreshToken });
+
+    if (!result.success) {
+      return ApiResponse.unauthorized(res, result.error);
+    }
+
+    return ApiResponse.success(200, res, 'Token renouvelé', {
+      token: result.token,
+      refreshToken: result.refreshToken,
+    });
+  } catch (err) {
+    logger.error('Erreur refresh token', { error: err.message });
+    return ApiResponse.internalServerError(res);
+  }
+};
+
+/**
+ * POST /api/auth/logout
+ * Déconnexion et revocation du refresh token
+ */
+exports.logout = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  try {
+    await AuthService.logout({ refreshToken });
+    return ApiResponse.success(200, res, 'Déconnexion réussie');
+  } catch (err) {
+    logger.error('Erreur logout', { error: err.message });
+    return ApiResponse.internalServerError(res);
+  }
+};
+
+/**
+ * POST /api/auth/forgot-password
+ * Demander un reset de mot de passe (envoi OTP par email)
+ */
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const result = await AuthService.forgotPassword(email);
+    return ApiResponse.success(200, res, result.message);
+  } catch (err) {
+    logger.error('Erreur forgotPassword', { error: err.message });
+    return ApiResponse.internalServerError(res);
+  }
+};
+
+/**
+ * POST /api/auth/reset-password
+ * Réinitialiser le mot de passe avec OTP
+ */
+exports.resetPassword = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  try {
+    const result = await AuthService.resetPassword(email, otp, newPassword);
+
+    if (!result.success) {
+      return ApiResponse.badRequest(res, result.message);
+    }
+
+    return ApiResponse.success(200, res, result.message);
+  } catch (err) {
+    logger.error('Erreur resetPassword', { error: err.message });
+    return ApiResponse.internalServerError(res);
+  }
+};
+
+/**
+ * POST /api/auth/change-password (protégé)
+ * Changer le mot de passe (utilisateur authentifié)
+ */
+exports.changePassword = async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  try {
+    const result = await AuthService.changePassword(req.user.id, oldPassword, newPassword);
+
+    if (!result.success) {
+      return ApiResponse.badRequest(res, result.message);
+    }
+
+    return ApiResponse.success(200, res, result.message);
+  } catch (err) {
+    logger.error('Erreur changePassword', { error: err.message });
+    return ApiResponse.internalServerError(res);
+  }
+};

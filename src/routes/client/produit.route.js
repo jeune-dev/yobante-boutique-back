@@ -1,14 +1,14 @@
-﻿// ─────────────────────────────────────────────────────────────
-// routes/client/produit.route.js   — Préfixe : /api/client/produits
 // ─────────────────────────────────────────────────────────────
-// const router = require('express').Router()
-// const ctrl = require('../../controllers/client/produit.controller')
-// const { rateLimit } = require('../../middlewares/rateLimit.middleware')
+// routes/client/produit.route.js   — Préfixe : /api/produits
+// ─────────────────────────────────────────────────────────────
+const router = require('express').Router();
+const ctrl = require('../../controllers/client/produit.controller');
 
-// GET  /api/client/produits                          -> ctrl.getCatalogue  [rateLimit]
-// GET  /api/client/produits/featured                 -> ctrl.getFeatured   [rateLimit]
-// GET  /api/client/produits/recherche                -> ctrl.rechercher    [rateLimit]
-// GET  /api/client/produits/:slug                    -> ctrl.getOne        [rateLimit]
-// GET  /api/client/categories/:slug/produits         -> ctrl.getByCategorie[rateLimit]
+router.get('/',              ctrl.getCatalogue);
+router.get('/featured',      ctrl.getFeatured);
+router.get('/recherche',     ctrl.rechercher);
+router.get('/:id/recommandes', ctrl.getRecommandes);
+router.get('/categorie/:slug', ctrl.getByCategorie);
+router.get('/:slug',         ctrl.getOne);
 
-// module.exports = router
+module.exports = router;

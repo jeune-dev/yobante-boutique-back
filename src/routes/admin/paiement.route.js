@@ -1,13 +1,13 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // routes/admin/paiement.route.js   — Préfixe : /api/admin/paiements
 // ─────────────────────────────────────────────────────────────
-// const router = require('express').Router()
-// const ctrl = require('../../controllers/admin/paiement.controller')
-// const { auth } = require('../../middlewares/auth.middleware')
-// const { admin } = require('../../middlewares/admin.middleware')
+const router = require('express').Router();
+const ctrl = require('../../controllers/admin/paiement.controller');
+const adminMiddleware = require('../../middlewares/admin.middleware');
 
-// GET    /api/admin/paiements                    -> ctrl.getAll      [auth, admin]
-// GET    /api/admin/paiements/:id                -> ctrl.getOne      [auth, admin]
-// PATCH  /api/admin/paiements/:id/rembourser     -> ctrl.rembourser  [auth, admin]
+router.get('/',                  adminMiddleware, ctrl.getAll);
+router.get('/:id',               adminMiddleware, ctrl.getOne);
+router.patch('/:id/confirmer',   adminMiddleware, ctrl.confirmer);
+router.patch('/:id/rembourser',  adminMiddleware, ctrl.rembourser);
 
-// module.exports = router
+module.exports = router;

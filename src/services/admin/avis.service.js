@@ -1,24 +1,61 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // services/admin/avis.service.js
 // ─────────────────────────────────────────────────────────────
+const { Avis, User, Produit } = require('../../models');
 
-// TODO: getAllAvis(filters)
-//   - Filtres : isApproved, produitId, userId
-//   - Include User et Produit
-//   - Retourner la liste des avis
+class GestionAvisService {
 
-// TODO: approuverAvis(id)
-//   - Vérifier que l'avis existe
-//   - Mettre isApproved=true
-//   - Retourner l'avis mis à jour
+  static async getAllAvis({ isApproved, produitId, userId } = {}) {
+    const where = {};
+    if (isApproved !== undefined) where.isApproved = isApproved === 'true' || isApproved === true;
+    if (produitId) where.produitId = produitId;
+    if (userId) where.userId = userId;
 
-// TODO: rejeterAvis(id)
-//   - Vérifier que l'avis existe
-//   - Supprimer l'avis de la base
-//   - Retourner un message de succès
+    const avis = await Avis.findAll({
+      where,
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'nom', 'prenom', 'avatar'] },
+        { model: Produit, as: 'produit', attributes: ['id', 'nom', 'slug'] },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
 
-// TODO: getAvisByProduit(produitId)
-//   - Récupérer tous les avis approuvés d'un produit
-//   - Include User (nom, avatar)
-//   - Calculer la note moyenne
-//   - Retourner { avis, noteMoyenne }
+    return { success: true, avis };
+  }
+
+  static async approuverAvis(id) {
+    const avis = await Avis.findByPk(id);
+    if (!avis) {
+      return { success: false, message: "Avis introuvable" };
+    }
+
+    await avis.update({ isApproved: true });
+
+    return { success: true, message: "Avis approuvé avec succès", avis };
+  }
+
+  static async rejeterAvis(id) {
+    const avis = await Avis.findByPk(id);
+    if (!avis) {
+      return { success: false, message: "Avis introuvable" };
+    }
+
+    await avis.destroy();
+
+    return { success: true, message: "Avis supprimé avec succès" };
+  }
+
+  static async getAvisByProduit(produitId) {
+    const avis = await Avis.findAll({
+      where: { produitId, isApproved: true },
+      include: [{ model: User, as: 'user', attributes: ['id', 'nom', 'prenom', 'avatar'] }],
+      order: [['createdAt', 'DESC']],
+    });
+
+    const noteMoyenne = avis.length ? avis.reduce((sum, a) => sum + a.note, 0) / avis.length : 0;
+
+    return { success: true, avis, noteMoyenne };
+  }
+}
+
+module.exports = GestionAvisService;

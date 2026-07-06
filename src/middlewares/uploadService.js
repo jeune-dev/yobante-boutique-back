@@ -1,14 +1,42 @@
-﻿// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // middlewares/uploadService.js — Service d'upload Cloudinary
 // ─────────────────────────────────────────────────────────────
+const cloudinary = require('../config/cloudinary');
 
-// TODO: importer cloudinary depuis ../config/cloudinary.js
+/**
+ * Upload un buffer image (multer memoryStorage) vers Cloudinary.
+ * @param {Buffer} buffer
+ * @param {string} originalname
+ * @param {string} [folder]
+ * @returns {Promise<string>} URL sécurisée de l'image
+ */
+function uploadImage(buffer, originalname, folder = 'yobante') {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, resource_type: 'image' },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    stream.end(buffer);
+  });
+}
 
-// TODO: uploadToCloudinary(buffer, options)
-//   - options : { folder, publicId, transformation }
-//   - Uploader le buffer sur Cloudinary via upload_stream
-//   - Retourner { url, publicId }
+function _extractPublicId(url) {
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
+  return match ? match[1] : null;
+}
 
-// TODO: deleteFromCloudinary(publicId)
-//   - Supprimer une ressource Cloudinary par son publicId
-//   - Retourner le résultat
+/**
+ * Supprime une image Cloudinary à partir de son URL sécurisée.
+ * @param {string} url
+ */
+async function deleteImage(url) {
+  if (!url) return;
+  const publicId = _extractPublicId(url);
+  if (!publicId) return;
+  await cloudinary.uploader.destroy(publicId);
+}
+
+module.exports = { uploadImage, deleteImage };

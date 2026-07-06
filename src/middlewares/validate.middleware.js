@@ -1,10 +1,22 @@
 ﻿// ─────────────────────────────────────────────────────────────
 // middlewares/validate.middleware.js
 // ─────────────────────────────────────────────────────────────
+const validate = (schema, source = 'body') => (req, res, next) => {
+  const { error, value } = schema.validate(req[source], {
+    abortEarly: false,
+    stripUnknown: true,
+    convert: true,
+  });
 
-// TODO: validate(schema, target='body')
-//   - Retourner une fonction middleware (req, res, next)
-//   - Valider req[target] contre le schéma Joi fourni
-//   - Options Joi : { abortEarly: false, stripUnknown: true }
-//   - Si erreur : retourner 400 avec la liste des messages d'erreur
-//   - Si succès : remplacer req[target] par la valeur validée et appeler next()
+  if (error) {
+    return res.status(400).json({
+      message: 'Données invalides',
+      details: error.details.map((d) => d.message),
+    });
+  }
+
+  req[source] = value;
+  next();
+};
+
+module.exports = validate;
