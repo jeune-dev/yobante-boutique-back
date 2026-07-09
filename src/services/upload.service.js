@@ -1,21 +1,22 @@
 // ─────────────────────────────────────────────────────────────
-// middlewares/uploadService.js — Service d'upload Cloudinary
+// services/upload.service.js — Gestion uploads Cloudinary
 // ─────────────────────────────────────────────────────────────
 const cloudinary = require('../config/cloudinary');
+const logger = require('../utils/logger');
 
-/**
- * Upload un buffer image (multer memoryStorage) vers Cloudinary.
- * @param {Buffer} buffer
- * @param {string} originalname
- * @param {string} [folder]
- * @returns {Promise<string>} URL sécurisée de l'image
- */
 function uploadImage(buffer, originalname, folder = 'yobante') {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder, resource_type: 'image' },
       (error, result) => {
-        if (error) return reject(error);
+        if (error) {
+          logger.error('[upload] Échec upload Cloudinary', {
+            originalname,
+            folder,
+            error: error.message,
+          });
+          return reject(error);
+        }
         resolve(result.secure_url);
       }
     );
@@ -28,15 +29,15 @@ function _extractPublicId(url) {
   return match ? match[1] : null;
 }
 
-/**
- * Supprime une image Cloudinary à partir de son URL sécurisée.
- * @param {string} url
- */
 async function deleteImage(url) {
   if (!url) return;
   const publicId = _extractPublicId(url);
   if (!publicId) return;
-  await cloudinary.uploader.destroy(publicId);
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (err) {
+    logger.warn('[upload] Échec suppression Cloudinary', { url, error: err.message });
+  }
 }
 
 module.exports = { uploadImage, deleteImage };

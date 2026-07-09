@@ -1,101 +1,143 @@
-// ─────────────────────────────────────────────────────────────
-// services/client/commande.service.js
-// ─────────────────────────────────────────────────────────────
 const { Op } = require('sequelize');
-const { Commande, CommandeItem, Panier, Produit, Adresse, Paiement, User, sequelize } = require('../../models');
+const {
+  Commande,
+  CommandeItem,
+  Panier,
+  Produit,
+  Adresse,
+  Paiement,
+  FraisLivraison,
+  User,
+  sequelize,
+} = require('../../models');
+const { FRAIS_LIVRAISON_DEFAUT, STATUT_COMMANDE } = require('../../constants');
+const { sousTotal: calcSousTotal, round2 } = require('../../utils/money');
 const paginate = require('../../utils/paginate');
 const { sendCommandeConfirmation } = require('../../utils/mailer');
-
-const FRAIS_LIVRAISON = 2000; // FCFA, forfait fixe
+const { acquire, release } = require('../../utils/advisoryLock');
 
 function _genererReference() {
   return `CMD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
+async function _getFraisLivraison(ville) {
+  if (ville) {
+    const tarif = await FraisLivraison.findOne({ where: { ville, isActive: true } });
+    if (tarif) return Number(tarif.montant);
+  }
+  return FRAIS_LIVRAISON_DEFAUT;
+}
+
 class CommandeService {
-
+  /**
+   * Passage de commande protégé contre la double-soumission.
+   * Un advisory lock PostgreSQL par userId empêche deux commandes simultanées
+   * du même utilisateur. La décrémention de stock est atomique (WHERE stock >= quantite).
+   */
   static async passerCommande(userId, { adresseId, note, methode }) {
-    const adresse = await Adresse.findOne({ where: { id: adresseId, userId } });
-    if (!adresse) {
-      return { success: false, message: "Adresse introuvable" };
-    }
-
-    const lignesPanier = await Panier.findAll({ where: { userId }, include: [{ model: Produit, as: 'produit' }] });
-    if (!lignesPanier.length) {
-      return { success: false, message: "Votre panier est vide" };
-    }
-
-    for (const ligne of lignesPanier) {
-      if (!ligne.produit.isActive) {
-        return { success: false, message: `"${ligne.produit.nom}" n'est plus disponible` };
-      }
-    }
-
-    const t = await sequelize.transaction();
+    // ── Advisory lock : un seul passage de commande à la fois par utilisateur ──
+    const lockKey = await acquire(`commande:${userId}`);
     try {
-      const sousTotal = lignesPanier.reduce((sum, l) => sum + Number(l.produit.prix) * l.quantite, 0);
+      const adresse = await Adresse.findOne({ where: { id: adresseId, userId } });
+      if (!adresse) return { success: false, message: 'Adresse introuvable' };
 
-      const commande = await Commande.create({
-        reference: _genererReference(),
-        userId,
-        adresseId,
-        montantTotal: sousTotal + FRAIS_LIVRAISON,
-        fraisLivraison: FRAIS_LIVRAISON,
-        note,
-      }, { transaction: t });
+      // SELECT FOR UPDATE sur le panier : sérialise les lectures concurrentes
+      const lignesPanier = await Panier.findAll({
+        where: { userId },
+        include: [{ model: Produit, as: 'produit' }],
+        lock: true,
+      });
+      if (!lignesPanier.length) return { success: false, message: 'Votre panier est vide' };
 
-      const items = [];
       for (const ligne of lignesPanier) {
-        // Décrément atomique et conditionnel (stock >= quantité demandée) pour éviter
-        // la survente en cas de commandes concurrentes sur le même produit.
-        // Ce contrôle doit rester séquentiel (chaque vérification dépend de l'état réel en base).
-        const quantite = Number(ligne.quantite);
-        const [nbLignesAffectees] = await Produit.update(
-          { stock: sequelize.literal(`stock - ${quantite}`) },
-          { where: { id: ligne.produitId, stock: { [Op.gte]: quantite } }, transaction: t }
+        if (!ligne.produit.isActive) {
+          return { success: false, message: `"${ligne.produit.nom}" n'est plus disponible` };
+        }
+      }
+
+      const fraisLivraison = await _getFraisLivraison(adresse.ville);
+
+      const t = await sequelize.transaction();
+      try {
+        const lignesTotal = round2(
+          lignesPanier.reduce(
+            (sum, l) => sum + Math.round(Number(l.produit.prix) * 100) * l.quantite,
+            0
+          ) / 100
         );
 
-        if (nbLignesAffectees === 0) {
-          await t.rollback();
-          return { success: false, message: `Stock insuffisant pour "${ligne.produit.nom}"` };
+        const commande = await Commande.create(
+          {
+            reference: _genererReference(),
+            userId,
+            adresseId,
+            montantTotal: round2(lignesTotal + fraisLivraison),
+            fraisLivraison,
+            note,
+          },
+          { transaction: t }
+        );
+
+        const items = [];
+        for (const ligne of lignesPanier) {
+          const quantite = Number(ligne.quantite);
+
+          // Décrémentation atomique : WHERE stock >= quantite évite le stock négatif
+          const [nbLignesAffectees] = await Produit.update(
+            { stock: sequelize.literal(`stock - ${quantite}`) },
+            { where: { id: ligne.produitId, stock: { [Op.gte]: quantite } }, transaction: t }
+          );
+
+          if (nbLignesAffectees === 0) {
+            await t.rollback();
+            return { success: false, message: `Stock insuffisant pour "${ligne.produit.nom}"` };
+          }
+
+          items.push({
+            commandeId: commande.id,
+            produitId: ligne.produitId,
+            quantite,
+            prixUnitaire: ligne.produit.prix,
+            sousTotal: calcSousTotal(ligne.produit.prix, quantite),
+          });
         }
 
-        items.push({
-          commandeId: commande.id,
-          produitId: ligne.produitId,
-          quantite: ligne.quantite,
-          prixUnitaire: ligne.produit.prix,
-          sousTotal: Number(ligne.produit.prix) * ligne.quantite,
+        await CommandeItem.bulkCreate(items, { transaction: t });
+
+        await Paiement.create(
+          {
+            commandeId: commande.id,
+            userId,
+            montant: commande.montantTotal,
+            methode,
+          },
+          { transaction: t }
+        );
+
+        await Panier.destroy({ where: { userId }, transaction: t });
+        await t.commit();
+
+        const commandeComplete = await Commande.findByPk(commande.id, {
+          include: [
+            { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+            { model: Paiement, as: 'paiement' },
+          ],
         });
+
+        const user = await User.findByPk(userId, { attributes: ['email'] });
+        if (user) await sendCommandeConfirmation(user.email, commandeComplete);
+
+        return {
+          success: true,
+          message: 'Commande passée avec succès',
+          commande: commandeComplete,
+        };
+      } catch (err) {
+        await t.rollback();
+        throw err;
       }
-
-      await CommandeItem.bulkCreate(items, { transaction: t });
-
-      await Paiement.create({
-        commandeId: commande.id,
-        userId,
-        montant: commande.montantTotal,
-        methode,
-      }, { transaction: t });
-
-      await Panier.destroy({ where: { userId }, transaction: t });
-
-      await t.commit();
-
-      const commandeComplete = await Commande.findByPk(commande.id, {
-        include: [
-          { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
-          { model: Paiement, as: 'paiement' },
-        ],
-      });
-
-      const user = await User.findByPk(userId);
-      if (user) await sendCommandeConfirmation(user.email, commandeComplete);
-
-      return { success: true, message: "Commande passée avec succès", commande: commandeComplete };
-    } catch (err) {
-      await t.rollback();
-      throw err;
+    } finally {
+      await release(lockKey);
     }
   }
 
@@ -126,13 +168,9 @@ class CommandeService {
       ],
     });
 
-    if (!commande) {
-      return { success: false, status: 404, message: "Commande introuvable" };
-    }
-
-    if (commande.userId !== userId) {
-      return { success: false, status: 403, message: "Cette commande ne vous appartient pas" };
-    }
+    if (!commande) return { success: false, status: 404, message: 'Commande introuvable' };
+    if (commande.userId !== userId)
+      return { success: false, status: 403, message: 'Cette commande ne vous appartient pas' };
 
     return { success: true, commande };
   }
@@ -142,30 +180,31 @@ class CommandeService {
       include: [{ model: CommandeItem, as: 'items' }],
     });
 
-    if (!commande) {
-      return { success: false, status: 404, message: "Commande introuvable" };
-    }
-
-    if (commande.userId !== userId) {
-      return { success: false, status: 403, message: "Cette commande ne vous appartient pas" };
-    }
-
-    if (commande.statut !== 'en_attente') {
-      return { success: false, status: 400, message: "Seule une commande en attente peut être annulée" };
+    if (!commande) return { success: false, status: 404, message: 'Commande introuvable' };
+    if (commande.userId !== userId)
+      return { success: false, status: 403, message: 'Cette commande ne vous appartient pas' };
+    if (commande.statut !== STATUT_COMMANDE.EN_ATTENTE) {
+      return {
+        success: false,
+        status: 400,
+        message: 'Seule une commande en attente peut être annulée',
+      };
     }
 
     const t = await sequelize.transaction();
     try {
-      // Restitution du stock : chaque ligne cible un produit différent, aucune dépendance
-      // d'ordre entre elles, donc sûr à paralléliser.
-      await Promise.all(commande.items.map((item) =>
-        Produit.increment('stock', { by: item.quantite, where: { id: item.produitId }, transaction: t })
-      ));
-
-      await commande.update({ statut: 'annulee' }, { transaction: t });
+      await Promise.all(
+        commande.items.map((item) =>
+          Produit.increment('stock', {
+            by: item.quantite,
+            where: { id: item.produitId },
+            transaction: t,
+          })
+        )
+      );
+      await commande.update({ statut: STATUT_COMMANDE.ANNULEE }, { transaction: t });
       await t.commit();
-
-      return { success: true, message: "Commande annulée avec succès", commande };
+      return { success: true, message: 'Commande annulée avec succès', commande };
     } catch (err) {
       await t.rollback();
       throw err;

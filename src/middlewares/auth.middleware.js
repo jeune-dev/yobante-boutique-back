@@ -1,34 +1,33 @@
-// ─────────────────────────────────────────────────────────────
-// middlewares/auth.middleware.js
-// ─────────────────────────────────────────────────────────────
 const jwt = require('jsonwebtoken');
 const { jwtConfig } = require('../config/security');
-const { User } = require('../models');
+const AppError = require('../utils/AppError');
 
-const authMiddleware = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Token manquant ou invalide' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, jwtConfig.secret);
-
-    const user = await User.findByPk(decoded.id);
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur introuvable' });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({ message: 'Compte désactivé. Contactez le support.' });
-    }
-
-    req.user = user;
-    next();
-  } catch (err) {
-    return res.status(401).json({ message: 'Token invalide' });
+/**
+ * Authentifie via JWT sans toucher la base de données.
+ * Le payload contient { id, role, isActive } signé — on fait confiance à la signature.
+ * Fenêtre de risque max si un compte est désactivé = durée du token (JWT_EXPIRES_IN, défaut 1h).
+ */
+const authMiddleware = (req, _res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next(new AppError('Token manquant ou invalide', 401));
   }
+
+  const token = authHeader.split(' ')[1];
+  let decoded;
+  try {
+    decoded = jwt.verify(token, jwtConfig.secret);
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') return next(new AppError('Token expiré', 401));
+    return next(new AppError('Token invalide', 401));
+  }
+
+  if (!decoded.isActive) {
+    return next(new AppError('Compte désactivé. Contactez le support.', 403));
+  }
+
+  req.user = { id: decoded.id, role: decoded.role, isActive: decoded.isActive };
+  next();
 };
 
 module.exports = authMiddleware;

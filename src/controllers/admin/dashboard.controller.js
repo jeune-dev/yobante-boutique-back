@@ -16,14 +16,19 @@ exports.getStats = async (req, res) => {
     });
   } catch (err) {
     logger.error('Erreur getStats dashboard :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération des statistiques');
+    return ApiResponse.internalServerError(
+      res,
+      'Erreur serveur lors de la récupération des statistiques'
+    );
   }
 };
 
 exports.getCommandesParStatut = async (req, res) => {
   try {
     const result = await DashboardService.getCommandesParStatut();
-    return ApiResponse.success(200, res, 'Répartition des commandes récupérée', { stats: result.stats });
+    return ApiResponse.success(200, res, 'Répartition des commandes récupérée', {
+      stats: result.stats,
+    });
   } catch (err) {
     logger.error('Erreur getCommandesParStatut :', err);
     return ApiResponse.internalServerError(res);
@@ -45,7 +50,9 @@ exports.getProduitsPlusVendus = async (req, res) => {
   try {
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const result = await DashboardService.getProduitsPlusVendus(limit);
-    return ApiResponse.success(200, res, 'Produits les plus vendus récupérés', { produits: result.produits });
+    return ApiResponse.success(200, res, 'Produits les plus vendus récupérés', {
+      produits: result.produits,
+    });
   } catch (err) {
     logger.error('Erreur getProduitsPlusVendus :', err);
     return ApiResponse.internalServerError(res);
@@ -56,7 +63,9 @@ exports.getClientsActifs = async (req, res) => {
   try {
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const result = await DashboardService.getClientsActifs(limit);
-    return ApiResponse.success(200, res, 'Clients les plus actifs récupérés', { clients: result.clients });
+    return ApiResponse.success(200, res, 'Clients les plus actifs récupérés', {
+      clients: result.clients,
+    });
   } catch (err) {
     logger.error('Erreur getClientsActifs :', err);
     return ApiResponse.internalServerError(res);
@@ -67,7 +76,9 @@ exports.getCommandesRecentes = async (req, res) => {
   try {
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const result = await DashboardService.getCommandesRecentes(limit);
-    return ApiResponse.success(200, res, 'Commandes récentes récupérées', { commandes: result.commandes });
+    return ApiResponse.success(200, res, 'Commandes récentes récupérées', {
+      commandes: result.commandes,
+    });
   } catch (err) {
     logger.error('Erreur getCommandesRecentes :', err);
     return ApiResponse.internalServerError(res);
@@ -81,6 +92,29 @@ exports.getStockAlertes = async (req, res) => {
     return ApiResponse.success(200, res, 'Alertes stock récupérées', { produits: result.produits });
   } catch (err) {
     logger.error('Erreur getStockAlertes :', err);
+    return ApiResponse.internalServerError(res);
+  }
+};
+
+exports.getKpiStocks = async (req, res) => {
+  try {
+    const result = await DashboardService.getKpiStocks();
+    return ApiResponse.success(200, res, 'KPI stocks', {
+      kpi: result.kpi,
+      produitsRupture: result.produitsRupture,
+    });
+  } catch (err) {
+    logger.error('Erreur getKpiStocks :', err);
+    return ApiResponse.internalServerError(res);
+  }
+};
+
+exports.getStatsVendeurs = async (req, res) => {
+  try {
+    const result = await DashboardService.getStatsVendeurs();
+    return ApiResponse.success(200, res, 'Stats vendeurs', { stats: result.stats });
+  } catch (err) {
+    logger.error('Erreur getStatsVendeurs :', err);
     return ApiResponse.internalServerError(res);
   }
 };

@@ -16,6 +16,15 @@ const registerSchema = Joi.object({
   email: Joi.string().trim().email().required(),
   password: motDePasse.required(),
   telephone: Joi.string().trim().optional().allow('', null),
+  adresse: Joi.object({
+    nomComplet: Joi.string().trim().max(200).optional().allow('', null),
+    telephone: Joi.string().trim().max(20).optional().allow('', null),
+    rue: Joi.string().trim().max(500).optional().allow('', null),
+    ville: Joi.string().trim().max(100).optional().allow('', null),
+    region: Joi.string().trim().max(100).optional().allow('', null),
+    pays: Joi.string().trim().max(100).optional().allow('', null),
+    codePostal: Joi.string().trim().max(20).optional().allow('', null),
+  }).optional(),
 });
 
 const loginSchema = Joi.object({

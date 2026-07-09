@@ -1,64 +1,69 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
-const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
-  nom: {
-    type: DataTypes.STRING(100),
-    allowNull: false,
-  },
-  prenom: {
-    type: DataTypes.STRING(100),
-    allowNull: false,
-  },
-  email: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-    unique: true,
-    validate: {
-      isEmail: true,
+const User = sequelize.define(
+  'User',
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    nom: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+    prenom: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true,
+      },
+    },
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    telephone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    role: {
+      type: DataTypes.ENUM('CLIENT', 'ADMIN', 'VENDEUR'),
+      defaultValue: 'CLIENT',
+      allowNull: false,
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    avatar: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
     },
   },
-  password: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-  },
-  telephone: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-  },
-  role: {
-    type: DataTypes.ENUM('CLIENT', 'ADMIN'),
-    defaultValue: 'CLIENT',
-    allowNull: false,
-  },
-  isActive: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true,
-  },
-  isVerified: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-  },
-  avatar: {
-    type: DataTypes.STRING(500),
-    allowNull: true,
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-  },
-}, {
-  timestamps: true,
-  tableName: 'users',
-});
+  {
+    timestamps: true,
+    tableName: 'users',
+    indexes: [{ unique: true, fields: ['email'] }, { fields: ['role'] }, { fields: ['isActive'] }],
+  }
+);
 
 module.exports = User;

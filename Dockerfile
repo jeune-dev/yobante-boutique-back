@@ -1,16 +1,31 @@
-FROM node:22-slim
+# ── Stage 1 : builder ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copier les fichiers de dépendances en premier (cache Docker)
 COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
 
-# Installer uniquement les dépendances de production
-RUN npm install --omit=dev
-
-# Copier le code source
 COPY . .
+
+# ── Stage 2 : runner ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Crée un utilisateur non-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copie uniquement les fichiers nécessaires depuis le builder
+COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app/src ./src
+COPY --from=builder --chown=appuser:appgroup /app/package.json ./
+
+USER appuser
 
 EXPOSE 5000
 
-CMD ["node", "src/index.js"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:5000/health || exit 1
+
+CMD ["node", "src/server.js"]

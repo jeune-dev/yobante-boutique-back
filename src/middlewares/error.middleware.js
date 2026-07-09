@@ -2,7 +2,15 @@ const logger = require('../config/logger');
 const AppError = require('../utils/AppError');
 const ApiResponse = require('../utils/ApiResponse');
 
-const CHAMPS_SENSIBLES = ['password', 'oldPassword', 'newPassword', 'token', 'refreshToken', 'code', 'otp'];
+const CHAMPS_SENSIBLES = [
+  'password',
+  'oldPassword',
+  'newPassword',
+  'token',
+  'refreshToken',
+  'code',
+  'otp',
+];
 
 /** Retourne une copie du body avec les champs sensibles masqués, pour ne jamais les écrire dans les logs. */
 function redactBody(body) {
@@ -16,37 +24,34 @@ function redactBody(body) {
 
 /**
  * Global Error Handler Middleware
- * 
+ *
  * Gère tous les types d'erreurs:
  * - AppError (erreurs métier)
  * - Joi ValidationError
  * - Sequelize errors
  * - Erreurs non capturées
  */
-const errorMiddleware = (err, req, res, next) => {
+const errorMiddleware = (err, req, res, _next) => {
   const statusCode = err.statusCode || err.status || 500;
   const message = err.message || 'Erreur serveur interne';
 
   // Log l'erreur
+  const meta = { requestId: req.requestId, path: req.path, method: req.method };
   if (statusCode >= 500) {
-    logger.error(`[${statusCode}] ${message}`, { 
-      path: req.path,
-      method: req.method,
+    logger.error(`[${statusCode}] ${message}`, {
+      ...meta,
       stack: err.stack,
-      body: redactBody(req.body)
+      body: redactBody(req.body),
     });
   } else {
-    logger.warn(`[${statusCode}] ${message}`, { 
-      path: req.path,
-      method: req.method
-    });
+    logger.warn(`[${statusCode}] ${message}`, meta);
   }
 
   // ── Erreurs Joi (validation) ───────────────────────────────
   if (err.isJoi || (err.details && Array.isArray(err.details))) {
-    const errors = (err.details || []).map(detail => ({
+    const errors = (err.details || []).map((detail) => ({
       field: detail.path?.join('.') || 'unknown',
-      message: detail.message
+      message: detail.message,
     }));
     return ApiResponse.badRequest(res, 'Données invalides', errors);
   }
@@ -76,9 +81,9 @@ const errorMiddleware = (err, req, res, next) => {
   }
 
   if (err.name === 'SequelizeValidationError') {
-    const errors = (err.errors || []).map(e => ({
+    const errors = (err.errors || []).map((e) => ({
       field: e.path,
-      message: e.message
+      message: e.message,
     }));
     return ApiResponse.badRequest(res, 'Validation base de données échouée', errors);
   }
@@ -94,9 +99,8 @@ const errorMiddleware = (err, req, res, next) => {
 
   // ── Erreur générique (statusCode/status personnalisé, ou 500 par défaut) ──
   // Ne jamais exposer le détail d'une erreur 500 en production.
-  const responseMessage = statusCode >= 500 && process.env.NODE_ENV === 'production'
-    ? 'Erreur serveur interne'
-    : message;
+  const responseMessage =
+    statusCode >= 500 && process.env.NODE_ENV === 'production' ? 'Erreur serveur interne' : message;
 
   return ApiResponse.error(statusCode, res, responseMessage);
 };

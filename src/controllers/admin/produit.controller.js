@@ -25,7 +25,10 @@ exports.getAll = async (req, res) => {
     });
   } catch (err) {
     logger.error('Erreur récupération produits :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération des produits');
+    return ApiResponse.internalServerError(
+      res,
+      'Erreur serveur lors de la récupération des produits'
+    );
   }
 };
 
@@ -36,7 +39,10 @@ exports.getOne = async (req, res) => {
     return ApiResponse.success(200, res, 'Produit récupéré', { produit: result.produit });
   } catch (err) {
     logger.error('Erreur récupération produit :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération du produit');
+    return ApiResponse.internalServerError(
+      res,
+      'Erreur serveur lors de la récupération du produit'
+    );
   }
 };
 
@@ -92,5 +98,47 @@ exports.toggleVisibilite = async (req, res) => {
   } catch (err) {
     logger.error('Erreur toggle visibilité :', err);
     return ApiResponse.internalServerError(res);
+  }
+};
+
+exports.validerStep1 = async (req, res) => {
+  try {
+    const result = await GestionProduitService.validerProduitStep1(req.params.id);
+    if (!result.success) return ApiResponse.badRequest(res, result.message);
+    return ApiResponse.success(200, res, result.message, { produit: result.produit });
+  } catch (err) {
+    return ApiResponse.internalServerError(res, err.message);
+  }
+};
+
+exports.validerStep2 = async (req, res) => {
+  try {
+    const result = await GestionProduitService.validerProduitStep2(req.params.id);
+    if (!result.success) return ApiResponse.badRequest(res, result.message);
+    return ApiResponse.success(200, res, result.message, { produit: result.produit });
+  } catch (err) {
+    return ApiResponse.internalServerError(res, err.message);
+  }
+};
+
+exports.rejeter = async (req, res) => {
+  try {
+    const result = await GestionProduitService.rejeterProduit(req.params.id, req.body.motif);
+    if (!result.success) return ApiResponse.notFound(res, result.message);
+    return ApiResponse.success(200, res, result.message, { produit: result.produit });
+  } catch (err) {
+    return ApiResponse.internalServerError(res, err.message);
+  }
+};
+
+exports.getAValider = async (req, res) => {
+  try {
+    const result = await GestionProduitService.getProduitsAValider();
+    return ApiResponse.success(200, res, 'Produits en attente de validation', {
+      produits: result.produits,
+      total: result.total,
+    });
+  } catch (err) {
+    return ApiResponse.internalServerError(res, err.message);
   }
 };

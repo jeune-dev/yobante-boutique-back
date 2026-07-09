@@ -1,19 +1,23 @@
-// ─────────────────────────────────────────────────────────────
-// services/admin/dashboard.service.js
-// ─────────────────────────────────────────────────────────────
 const { Op, fn, col, literal } = require('sequelize');
-const { User, Produit, Commande, CommandeItem } = require('../../models');
+const { User, Produit, Commande, CommandeItem, ProfilVendeur, sequelize } = require('../../models');
+const { ROLES } = require('../../constants');
 
 class DashboardService {
-
   static async getStatsGlobales() {
-    const totalClients = await User.count({ where: { role: 'CLIENT' } });
-    const totalProduits = await Produit.count({ where: { isActive: true } });
-    const totalCommandes = await Commande.count();
+    const [totalClients, totalProduits, totalCommandes, chiffreAffaires] = await Promise.all([
+      User.count({ where: { role: ROLES.CLIENT } }),
+      Produit.count({ where: { isActive: true } }),
+      Commande.count(),
+      Commande.sum('montantTotal', { where: { statut: 'livree' } }),
+    ]);
 
-    const chiffreAffaires = await Commande.sum('montantTotal', { where: { statut: 'livree' } }) || 0;
-
-    return { success: true, totalClients, totalProduits, totalCommandes, chiffreAffaires };
+    return {
+      success: true,
+      totalClients,
+      totalProduits,
+      totalCommandes,
+      chiffreAffaires: chiffreAffaires || 0,
+    };
   }
 
   static async getCommandesParStatut() {
@@ -23,7 +27,10 @@ class DashboardService {
       raw: true,
     });
 
-    return { success: true, stats: rows.map((r) => ({ statut: r.statut, count: Number(r.count) })) };
+    return {
+      success: true,
+      stats: rows.map((r) => ({ statut: r.statut, count: Number(r.count) })),
+    };
   }
 
   static async getRevenusParMois(annee = new Date().getFullYear()) {
@@ -36,7 +43,7 @@ class DashboardService {
         statut: 'livree',
         createdAt: {
           [Op.gte]: new Date(`${annee}-01-01`),
-          [Op.lt]: new Date(`${annee + 1}-01-01`),
+          [Op.lt]: new Date(`${Number(annee) + 1}-01-01`),
         },
       },
       group: [literal('1')],
@@ -45,53 +52,83 @@ class DashboardService {
 
     const parMois = Array.from({ length: 12 }, (_, i) => ({ mois: i + 1, revenus: 0 }));
     rows.forEach((r) => {
-      const mois = Number(r.mois);
-      parMois[mois - 1].revenus = Number(r.revenus) || 0;
+      parMois[Number(r.mois) - 1].revenus = Number(r.revenus) || 0;
     });
 
     return { success: true, revenus: parMois };
   }
 
+  /** Fix N+1 : JOIN direct CommandeItem → Produit dans une seule requête */
   static async getProduitsPlusVendus(limit = 10) {
     const rows = await CommandeItem.findAll({
-      attributes: ['produitId', [fn('SUM', col('quantite')), 'totalVendu']],
-      group: ['produitId'],
+      attributes: [
+        'produitId',
+        [fn('SUM', col('quantite')), 'totalVendu'],
+        [col('produit.nom'), 'nomProduit'],
+        [col('produit.slug'), 'slugProduit'],
+        [col('produit.prix'), 'prixProduit'],
+        [col('produit.images'), 'imagesProduit'],
+      ],
+      include: [
+        {
+          model: require('../../models').Produit,
+          as: 'produit',
+          attributes: [],
+          required: true,
+        },
+      ],
+      group: ['CommandeItem.produitId', 'produit.id'],
       order: [[literal('"totalVendu"'), 'DESC']],
-      limit,
+      limit: parseInt(limit, 10),
       raw: true,
     });
 
-    const produitIds = rows.map((r) => r.produitId);
-    const produits = await Produit.findAll({ where: { id: produitIds } });
-    const produitsById = Object.fromEntries(produits.map((p) => [p.id, p]));
-
-    const resultat = rows.map((r) => ({
-      produit: produitsById[r.produitId] || null,
-      totalVendu: Number(r.totalVendu),
-    }));
-
-    return { success: true, produits: resultat };
+    return {
+      success: true,
+      produits: rows.map((r) => ({
+        produitId: r.produitId,
+        nom: r.nomProduit,
+        slug: r.slugProduit,
+        prix: r.prixProduit,
+        images: r.imagesProduit,
+        totalVendu: Number(r.totalVendu),
+      })),
+    };
   }
 
   static async getClientsActifs(limit = 10) {
     const rows = await Commande.findAll({
-      attributes: ['userId', [fn('COUNT', col('id')), 'nbCommandes']],
-      group: ['userId'],
+      attributes: [
+        'userId',
+        [fn('COUNT', col('Commande.id')), 'nbCommandes'],
+        [col('user.nom'), 'nom'],
+        [col('user.prenom'), 'prenom'],
+        [col('user.email'), 'email'],
+      ],
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: [],
+          required: true,
+        },
+      ],
+      group: ['Commande.userId', 'user.id'],
       order: [[literal('"nbCommandes"'), 'DESC']],
-      limit,
+      limit: parseInt(limit, 10),
       raw: true,
     });
 
-    const userIds = rows.map((r) => r.userId);
-    const users = await User.findAll({ where: { id: userIds }, attributes: { exclude: ['password'] } });
-    const usersById = Object.fromEntries(users.map((u) => [u.id, u]));
-
-    const resultat = rows.map((r) => ({
-      user: usersById[r.userId] || null,
-      nbCommandes: Number(r.nbCommandes),
-    }));
-
-    return { success: true, clients: resultat };
+    return {
+      success: true,
+      clients: rows.map((r) => ({
+        userId: r.userId,
+        nom: r.nom,
+        prenom: r.prenom,
+        email: r.email,
+        nbCommandes: Number(r.nbCommandes),
+      })),
+    };
   }
 
   static async getCommandesRecentes(limit = 10) {
@@ -101,7 +138,7 @@ class DashboardService {
         { model: CommandeItem, as: 'items' },
       ],
       order: [['createdAt', 'DESC']],
-      limit,
+      limit: parseInt(limit, 10),
     });
 
     return { success: true, commandes };
@@ -110,10 +147,63 @@ class DashboardService {
   static async getStockAlertes(seuil = 5) {
     const produits = await Produit.findAll({
       where: { stock: { [Op.lte]: seuil }, isActive: true },
+      attributes: ['id', 'nom', 'slug', 'stock', 'stockAlloue', 'reference'],
       order: [['stock', 'ASC']],
     });
 
     return { success: true, produits };
+  }
+
+  /** KPI stocks : une seule requête SQL avec COUNTs conditionnels */
+  static async getKpiStocks() {
+    const [kpiRow, produitsRupture] = await Promise.all([
+      sequelize.query(
+        `
+        SELECT
+          COUNT(*) FILTER (WHERE "isActive" = true)                                   AS "totalProduits",
+          COUNT(*) FILTER (WHERE "isActive" = true AND stock = 0)                     AS "enRupture",
+          COUNT(*) FILTER (WHERE "isActive" = true AND stock > 0 AND stock <= 5)      AS "stockFaible",
+          COUNT(*) FILTER (WHERE "isActive" = true AND stock > 5)                     AS "stockOk"
+        FROM produits
+      `,
+        { type: sequelize.QueryTypes.SELECT }
+      ),
+      Produit.findAll({
+        where: { stock: 0, isActive: true },
+        attributes: ['id', 'nom', 'slug', 'stock', 'stockAlloue', 'reference'],
+        order: [['updatedAt', 'DESC']],
+        limit: 20,
+      }),
+    ]);
+
+    const kpi = kpiRow[0];
+    const total = Number(kpi.totalProduits);
+
+    return {
+      success: true,
+      kpi: {
+        totalProduits: total,
+        enRupture: Number(kpi.enRupture),
+        stockFaible: Number(kpi.stockFaible),
+        stockOk: Number(kpi.stockOk),
+        tauxRupture: total ? ((Number(kpi.enRupture) / total) * 100).toFixed(1) : 0,
+      },
+      produitsRupture,
+    };
+  }
+
+  static async getStatsVendeurs() {
+    const [totalVendeurs, vendeursActifs, enAttenteValidation, produitsSoumis] = await Promise.all([
+      User.count({ where: { role: ROLES.VENDEUR } }),
+      User.count({ where: { role: ROLES.VENDEUR, isActive: true } }),
+      ProfilVendeur.count({ where: { isValidatedStep2: false } }),
+      Produit.count({ where: { statutValidation: 'en_attente' } }),
+    ]);
+
+    return {
+      success: true,
+      stats: { totalVendeurs, vendeursActifs, enAttenteValidation, produitsSoumis },
+    };
   }
 }
 

@@ -17,7 +17,7 @@ exports.passer = async (req, res) => {
       return ApiResponse.badRequest(res, result.message);
     }
     return ApiResponse.success(201, res, result.message, {
-      commande: result.commande
+      commande: result.commande,
     });
   } catch (err) {
     logger.error('Erreur passerCommande', { error: err.message });
@@ -34,7 +34,7 @@ exports.getMes = async (req, res) => {
     const result = await CommandeService.getMesCommandes(req.user.id, req.query);
     return ApiResponse.success(200, res, 'Commandes récupérées', {
       commandes: result.commandes,
-      pagination: result.pagination
+      pagination: result.pagination,
     });
   } catch (err) {
     logger.error('Erreur getMesCommandes', { error: err.message });
@@ -51,12 +51,12 @@ exports.getOne = async (req, res) => {
     const result = await CommandeService.getCommandeDetail(req.user.id, req.params.id);
     if (!result.success) {
       const statusCode = result.status || 404;
-      return statusCode === 404
-        ? ApiResponse.notFound(res, result.message)
-        : ApiResponse.badRequest(res, result.message);
+      if (statusCode === 404) return ApiResponse.notFound(res, result.message);
+      if (statusCode === 403) return ApiResponse.forbidden(res, result.message);
+      return ApiResponse.badRequest(res, result.message);
     }
     return ApiResponse.success(200, res, 'Commande récupérée', {
-      commande: result.commande
+      commande: result.commande,
     });
   } catch (err) {
     logger.error('Erreur getCommandeDetail', { error: err.message });
@@ -73,12 +73,12 @@ exports.annuler = async (req, res) => {
     const result = await CommandeService.annulerCommande(req.user.id, req.params.id);
     if (!result.success) {
       const statusCode = result.status || 400;
-      return statusCode === 404
-        ? ApiResponse.notFound(res, result.message)
-        : ApiResponse.badRequest(res, result.message);
+      if (statusCode === 404) return ApiResponse.notFound(res, result.message);
+      if (statusCode === 403) return ApiResponse.forbidden(res, result.message);
+      return ApiResponse.badRequest(res, result.message);
     }
     return ApiResponse.success(200, res, result.message, {
-      commande: result.commande
+      commande: result.commande,
     });
   } catch (err) {
     logger.error('Erreur annulerCommande', { error: err.message });

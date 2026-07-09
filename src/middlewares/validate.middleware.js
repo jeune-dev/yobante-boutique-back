@@ -1,22 +1,21 @@
-﻿// ─────────────────────────────────────────────────────────────
-// middlewares/validate.middleware.js
 // ─────────────────────────────────────────────────────────────
-const validate = (schema, source = 'body') => (req, res, next) => {
-  const { error, value } = schema.validate(req[source], {
-    abortEarly: false,
-    stripUnknown: true,
-    convert: true,
-  });
-
-  if (error) {
-    return res.status(400).json({
-      message: 'Données invalides',
-      details: error.details.map((d) => d.message),
+// middlewares/validate.middleware.js — Validation Joi centralisée
+// Propage les erreurs au Global Error Handler via next(err)
+// pour garantir un format de réponse uniforme.
+// ─────────────────────────────────────────────────────────────
+const validate =
+  (schema, source = 'body') =>
+  (req, res, next) => {
+    const { error, value } = schema.validate(req[source], {
+      abortEarly: false,
+      stripUnknown: true,
+      convert: true,
     });
-  }
 
-  req[source] = value;
-  next();
-};
+    if (error) return next(error);
+
+    req[source] = value;
+    next();
+  };
 
 module.exports = validate;

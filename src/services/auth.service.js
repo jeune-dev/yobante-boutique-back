@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { User, RefreshToken, UserOtp, sequelize } = require('../models');
+const { User, RefreshToken, UserOtp, Adresse, sequelize } = require('../models');
 const { bcryptConfig, jwtConfig } = require('../config/security');
 const { sendResetPasswordEmail } = require('../utils/mailer');
 
@@ -24,19 +24,15 @@ function _hashToken(token) {
 }
 
 function _generateAccessToken(user) {
-  return jwt.sign(
-    { id: user.id, role: user.role },
-    jwtConfig.secret,
-    { expiresIn: jwtConfig.expiresIn }
-  );
+  return jwt.sign({ id: user.id, role: user.role, isActive: user.isActive }, jwtConfig.secret, {
+    expiresIn: jwtConfig.expiresIn,
+  });
 }
 
 function _generateRefreshToken(user) {
-  return jwt.sign(
-    { id: user.id, type: 'refresh' },
-    jwtConfig.refreshSecret,
-    { expiresIn: jwtConfig.refreshExpiresIn }
-  );
+  return jwt.sign({ id: user.id, type: 'refresh' }, jwtConfig.refreshSecret, {
+    expiresIn: jwtConfig.refreshExpiresIn,
+  });
 }
 
 /** Stocke un refresh token dans la DB (hash uniquement) et purge les anciens expirés. */
@@ -52,16 +48,15 @@ async function _storeRefreshToken(userId, refreshToken, transaction) {
   // Purge des tokens expirés pour cet utilisateur (maintenance silencieuse)
   await RefreshToken.destroy({
     where: { userId, expiresAt: { [Op.lt]: new Date() } },
-    transaction
+    transaction,
   });
 }
 
 // ─── AuthService ───────────────────────────────────────────────────────────────
 
 class AuthService {
-
   // -------------------- INSCRIPTION --------------------
-  static async register({ nom, prenom, email, password, telephone }) {
+  static async register({ nom, prenom, email, password, telephone, adresse }) {
     const t = await sequelize.transaction();
 
     try {
@@ -70,24 +65,48 @@ class AuthService {
       const exist = await User.findOne({ where: { email: emailClean }, transaction: t });
       if (exist) {
         await t.rollback();
-        return { success: false, message: "Cet email est déjà utilisé" };
+        // Message générique : ne révèle pas l'existence du compte (anti-enumeration)
+        return {
+          success: true,
+          message: "Si cet email n'est pas encore enregistré, votre compte vient d'être créé.",
+        };
       }
 
       const hashedPassword = await bcrypt.hash(password, bcryptConfig.saltRounds);
 
-      const user = await User.create({
-        nom,
-        prenom,
-        email: emailClean,
-        password: hashedPassword,
-        telephone,
-        isVerified: true,
-      }, { transaction: t });
+      const user = await User.create(
+        {
+          nom,
+          prenom,
+          email: emailClean,
+          password: hashedPassword,
+          telephone,
+          isVerified: true,
+        },
+        { transaction: t }
+      );
+
+      // Adresse de livraison optionnelle à l'inscription
+      if (adresse && (adresse.rue || adresse.ville)) {
+        await Adresse.create(
+          {
+            userId: user.id,
+            nomComplet: adresse.nomComplet || `${prenom} ${nom}`,
+            telephone: adresse.telephone || telephone,
+            rue: adresse.rue,
+            ville: adresse.ville || '',
+            region: adresse.region,
+            pays: adresse.pays || 'Sénégal',
+            codePostal: adresse.codePostal,
+            isDefault: true,
+          },
+          { transaction: t }
+        );
+      }
 
       await t.commit();
 
-      return { success: true, message: "Inscription réussie", user };
-
+      return { success: true, message: 'Inscription réussie', user };
     } catch (err) {
       await t.rollback();
       throw err;
@@ -101,15 +120,16 @@ class AuthService {
       where: isEmail ? { email: identifiant.trim().toLowerCase() } : { telephone: identifiant },
     });
 
-    if (!user)
-      return { success: false, error: 'Identifiant ou mot de passe incorrect' };
+    if (!user) return { success: false, error: 'Identifiant ou mot de passe incorrect' };
 
     if (!user.isActive)
-      return { success: false, error: 'Votre compte a été désactivé. Veuillez contacter le support.' };
+      return {
+        success: false,
+        error: 'Votre compte a été désactivé. Veuillez contacter le support.',
+      };
 
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid)
-      return { success: false, error: 'Identifiant ou mot de passe incorrect' };
+    if (!valid) return { success: false, error: 'Identifiant ou mot de passe incorrect' };
 
     const accessToken = _generateAccessToken(user);
     const refreshToken = _generateRefreshToken(user);
@@ -142,27 +162,22 @@ class AuthService {
       return { success: false, error: 'Refresh token invalide ou expiré' };
     }
 
-    if (decoded.type !== 'refresh')
-      return { success: false, error: 'Type de token invalide' };
+    if (decoded.type !== 'refresh') return { success: false, error: 'Type de token invalide' };
 
     const tokenHash = _hashToken(refreshToken);
     const storedToken = await RefreshToken.findOne({ where: { token: tokenHash } });
 
-    if (!storedToken)
-      return { success: false, error: 'Refresh token inconnu' };
+    if (!storedToken) return { success: false, error: 'Refresh token inconnu' };
 
-    if (storedToken.revoked)
-      return { success: false, error: 'Refresh token révoqué' };
+    if (storedToken.revoked) return { success: false, error: 'Refresh token révoqué' };
 
     if (storedToken.expiresAt < new Date())
       return { success: false, error: 'Refresh token expiré' };
 
     const user = await User.findByPk(decoded.id);
-    if (!user)
-      return { success: false, error: 'Utilisateur introuvable' };
+    if (!user) return { success: false, error: 'Utilisateur introuvable' };
 
-    if (!user.isActive)
-      return { success: false, error: 'Compte inactif' };
+    if (!user.isActive) return { success: false, error: 'Compte inactif' };
 
     const t = await sequelize.transaction();
     try {
@@ -199,7 +214,10 @@ class AuthService {
 
     if (!user || user.role === 'ADMIN') {
       // Réponse générique pour ne pas révéler l'existence du compte
-      return { success: true, message: "Si un compte existe avec cet email, un code de réinitialisation a été envoyé." };
+      return {
+        success: true,
+        message: 'Si un compte existe avec cet email, un code de réinitialisation a été envoyé.',
+      };
     }
 
     const otp = _generateOtp(8);
@@ -211,7 +229,10 @@ class AuthService {
 
     await sendResetPasswordEmail(user.email, otp);
 
-    return { success: true, message: "Un code de réinitialisation a été envoyé à votre adresse email." };
+    return {
+      success: true,
+      message: 'Un code de réinitialisation a été envoyé à votre adresse email.',
+    };
   }
 
   // -------------------- RÉINITIALISATION MOT DE PASSE (OTP) --------------------
@@ -219,7 +240,7 @@ class AuthService {
     const emailClean = email.trim().toLowerCase();
     const user = await User.findOne({ where: { email: emailClean } });
     if (!user) {
-      return { success: false, message: "Aucun compte associé à cet email." };
+      return { success: false, message: 'Aucun compte associé à cet email.' };
     }
 
     const otpRecord = await UserOtp.findOne({
@@ -227,16 +248,19 @@ class AuthService {
       order: [['createdAt', 'DESC']],
     });
     if (!otpRecord) {
-      return { success: false, message: "Aucun code de réinitialisation trouvé. Veuillez refaire une demande." };
+      return {
+        success: false,
+        message: 'Aucun code de réinitialisation trouvé. Veuillez refaire une demande.',
+      };
     }
 
     if (new Date() > otpRecord.expiresAt) {
-      return { success: false, message: "Le code a expiré. Veuillez refaire une demande." };
+      return { success: false, message: 'Le code a expiré. Veuillez refaire une demande.' };
     }
 
     const isValid = await bcrypt.compare(otpRecu, otpRecord.code);
     if (!isValid) {
-      return { success: false, message: "Code de réinitialisation incorrect." };
+      return { success: false, message: 'Code de réinitialisation incorrect.' };
     }
 
     const t = await sequelize.transaction();
@@ -244,10 +268,13 @@ class AuthService {
       const hashedPassword = await bcrypt.hash(newPassword, bcryptConfig.saltRounds);
       await user.update({ password: hashedPassword }, { transaction: t });
       await otpRecord.update({ isUsed: true }, { transaction: t });
-      await RefreshToken.update({ revoked: true }, { where: { userId: user.id, revoked: false }, transaction: t });
+      await RefreshToken.update(
+        { revoked: true },
+        { where: { userId: user.id, revoked: false }, transaction: t }
+      );
 
       await t.commit();
-      return { success: true, message: "Mot de passe réinitialisé avec succès." };
+      return { success: true, message: 'Mot de passe réinitialisé avec succès.' };
     } catch (err) {
       await t.rollback();
       throw err;
@@ -258,22 +285,25 @@ class AuthService {
   static async changePassword(userId, oldPassword, newPassword) {
     const user = await User.findByPk(userId);
     if (!user) {
-      return { success: false, message: "Utilisateur introuvable." };
+      return { success: false, message: 'Utilisateur introuvable.' };
     }
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) {
-      return { success: false, message: "Mot de passe actuel incorrect." };
+      return { success: false, message: 'Mot de passe actuel incorrect.' };
     }
 
     const t = await sequelize.transaction();
     try {
       const hashedPassword = await bcrypt.hash(newPassword, bcryptConfig.saltRounds);
       await user.update({ password: hashedPassword }, { transaction: t });
-      await RefreshToken.update({ revoked: true }, { where: { userId: user.id, revoked: false }, transaction: t });
+      await RefreshToken.update(
+        { revoked: true },
+        { where: { userId: user.id, revoked: false }, transaction: t }
+      );
 
       await t.commit();
-      return { success: true, message: "Mot de passe modifié avec succès." };
+      return { success: true, message: 'Mot de passe modifié avec succès.' };
     } catch (err) {
       await t.rollback();
       throw err;

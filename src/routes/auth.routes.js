@@ -1,8 +1,11 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/auth.controller');
 const auth = require('../middlewares/auth.middleware');
-const checkActiveUser = require('../middlewares/checkActiveUser.middleware');
-const { authLimiter } = require('../middlewares/rateLimit.middleware');
+const {
+  authLimiter,
+  registerLimiter,
+  forgotPasswordLimiter,
+} = require('../middlewares/rateLimit.middleware');
 const validate = require('../middlewares/validate.middleware');
 const {
   registerSchema,
@@ -14,13 +17,18 @@ const {
   changePasswordSchema,
 } = require('../validations/auth.validation');
 
-router.post('/register', authLimiter, validate(registerSchema), ctrl.register);
-router.post('/login',    authLimiter, validate(loginSchema),    ctrl.login);
-router.post('/refresh',  authLimiter, validate(refreshSchema),  ctrl.refresh);
-router.post('/logout',                validate(logoutSchema),   ctrl.logout);
+router.post('/register', registerLimiter, validate(registerSchema), ctrl.register);
+router.post('/login', authLimiter, validate(loginSchema), ctrl.login);
+router.post('/refresh', authLimiter, validate(refreshSchema), ctrl.refresh);
+router.post('/logout', validate(logoutSchema), ctrl.logout);
 
-router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), ctrl.forgotPassword);
-router.post('/reset-password',  authLimiter, validate(resetPasswordSchema),  ctrl.resetPassword);
-router.put('/change-password',  auth, checkActiveUser, validate(changePasswordSchema), ctrl.changePassword);
+router.post(
+  '/forgot-password',
+  forgotPasswordLimiter,
+  validate(forgotPasswordSchema),
+  ctrl.forgotPassword
+);
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), ctrl.resetPassword);
+router.put('/change-password', auth, validate(changePasswordSchema), ctrl.changePassword);
 
 module.exports = router;

@@ -1,15 +1,9 @@
-// ─────────────────────────────────────────────────────────────
-// middlewares/checkActiveUser.middleware.js
-// ─────────────────────────────────────────────────────────────
-const checkActiveUser = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Utilisateur non authentifié' });
-  }
+const AppError = require('../utils/AppError');
 
-  if (!req.user.isActive) {
-    return res.status(403).json({ message: 'Votre compte a été désactivé. Veuillez contacter le support.' });
-  }
-
+const checkActiveUser = (req, _res, next) => {
+  if (!req.user) return next(new AppError('Utilisateur non authentifié', 401));
+  if (!req.user.isActive)
+    return next(new AppError('Votre compte a été désactivé. Veuillez contacter le support.', 403));
   next();
 };
 

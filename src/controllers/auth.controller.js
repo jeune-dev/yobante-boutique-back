@@ -12,10 +12,10 @@ const logger = require('../config/logger');
  * Créer un nouveau compte utilisateur
  */
 exports.register = async (req, res) => {
-  const { nom, prenom, email, password, telephone } = req.body;
+  const { nom, prenom, email, password, telephone, adresse } = req.body;
 
   try {
-    const result = await AuthService.register({ nom, prenom, email, password, telephone });
+    const result = await AuthService.register({ nom, prenom, email, password, telephone, adresse });
 
     if (!result.success) {
       return ApiResponse.badRequest(res, result.message);

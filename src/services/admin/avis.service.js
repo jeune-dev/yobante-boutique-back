@@ -2,9 +2,9 @@
 // services/admin/avis.service.js
 // ─────────────────────────────────────────────────────────────
 const { Avis, User, Produit } = require('../../models');
+const { recalculerNoteMoyenne } = require('../../utils/avisHelper');
 
 class GestionAvisService {
-
   static async getAllAvis({ isApproved, produitId, userId } = {}) {
     const where = {};
     if (isApproved !== undefined) where.isApproved = isApproved === 'true' || isApproved === true;
@@ -25,24 +25,23 @@ class GestionAvisService {
 
   static async approuverAvis(id) {
     const avis = await Avis.findByPk(id);
-    if (!avis) {
-      return { success: false, message: "Avis introuvable" };
-    }
+    if (!avis) return { success: false, message: 'Avis introuvable' };
 
     await avis.update({ isApproved: true });
+    await recalculerNoteMoyenne(avis.produitId);
 
-    return { success: true, message: "Avis approuvé avec succès", avis };
+    return { success: true, message: 'Avis approuvé avec succès', avis };
   }
 
   static async rejeterAvis(id) {
     const avis = await Avis.findByPk(id);
-    if (!avis) {
-      return { success: false, message: "Avis introuvable" };
-    }
+    if (!avis) return { success: false, message: 'Avis introuvable' };
 
+    const { produitId } = avis;
     await avis.destroy();
+    await recalculerNoteMoyenne(produitId);
 
-    return { success: true, message: "Avis supprimé avec succès" };
+    return { success: true, message: 'Avis supprimé avec succès' };
   }
 
   static async getAvisByProduit(produitId) {
@@ -52,9 +51,16 @@ class GestionAvisService {
       order: [['createdAt', 'DESC']],
     });
 
-    const noteMoyenne = avis.length ? avis.reduce((sum, a) => sum + a.note, 0) / avis.length : 0;
+    const produit = await Produit.findByPk(produitId, {
+      attributes: ['noteMoyenne', 'nombreAvis'],
+    });
 
-    return { success: true, avis, noteMoyenne };
+    return {
+      success: true,
+      avis,
+      noteMoyenne: produit ? Number(produit.noteMoyenne) : 0,
+      nombreAvis: produit ? produit.nombreAvis : 0,
+    };
   }
 }
 

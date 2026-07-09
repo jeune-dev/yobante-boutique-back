@@ -106,7 +106,19 @@ npm start
 npm run seed:admin
 ```
 
-### 4️⃣ Tester l'API
+### 4️⃣ Avec Docker (recommandé)
+
+```bash
+# Démarrer tout (PostgreSQL + Backend)
+make dev       # ou : docker compose up --build -d
+
+make logs      # Voir les logs backend
+make db        # Shell PostgreSQL
+make stop      # Arrêter
+make backup    # Sauvegarder la DB
+```
+
+### 5️⃣ Tester l'API
 
 ```bash
 # Health check
@@ -118,35 +130,40 @@ http://localhost:5000/api-docs
 
 ---
 
-## 📚 Endpoints Principaux
+## 📚 Endpoints — Base URL : `/api/v1`
+
+> Les routes `/api/*` redirigent automatiquement vers `/api/v1/*` (301).
 
 ### 🔐 Auth
-- `POST /api/auth/register` — Créer un compte
-- `POST /api/auth/login` — Se connecter
-- `POST /api/auth/refresh` — Renouveler token
-- `POST /api/auth/logout` — Se déconnecter
-- `POST /api/auth/forgot-password` — Réinitialisation
-- `POST /api/auth/change-password` (protégé) — Changer mot de passe
+- `POST /api/v1/auth/register` — Créer un compte (5/h par IP)
+- `POST /api/v1/auth/login` — Se connecter (10/15min par IP)
+- `POST /api/v1/auth/refresh` — Renouveler token
+- `POST /api/v1/auth/logout` — Se déconnecter
+- `POST /api/v1/auth/forgot-password` — Réinitialisation (3/h par IP)
+- `POST /api/v1/auth/change-password` (protégé) — Changer mot de passe
 
 ### 🛒 Shop (Client)
-- `GET /api/produits` — Tous les produits (filtres, pagination)
-- `GET /api/produits/:id` — Détail produit
-- `POST /api/panier` — Ajouter au panier (protégé)
-- `GET /api/panier` — Voir panier (protégé)
-- `DELETE /api/panier/:itemId` — Supprimer du panier (protégé)
-- `POST /api/commandes` — Passer commande (protégé)
-- `GET /api/commandes` — Voir mes commandes (protégé)
-- `POST /api/avis` — Créer avis (protégé)
-- `PATCH /api/profile` — Mettre à jour profil (protégé)
+- `GET /api/v1/produits` — Tous les produits (filtres, pagination, max 100/page)
+- `GET /api/v1/panier` — Voir panier (protégé)
+- `POST /api/v1/commandes` — Passer commande (protégé)
+- `GET /api/v1/avis` — Avis produit
+- `PATCH /api/v1/profile` — Mettre à jour profil (protégé)
+- `GET /api/v1/bannieres` — Bannières actives
+- `GET /api/v1/promotions` — Promotions par section
+- `GET /api/v1/frais-livraisons` — Tarifs livraison
 
-### 👨‍💼 Admin (Protégé)
-- `GET /api/admin/dashboard` — Stats globales
-- `POST /api/admin/produits` — Créer produit
-- `PUT /api/admin/produits/:id` — Modifier produit
-- `DELETE /api/admin/produits/:id` — Supprimer produit
-- `GET /api/admin/commandes` — Toutes les commandes
-- `PATCH /api/admin/commandes/:id/status` — Changer statut commande
-- `GET /api/admin/utilisateurs` — Gestion utilisateurs
+### 👨‍💼 Admin (JWT ADMIN requis)
+- `GET /api/v1/admin/dashboard/stats` — KPI globaux
+- `GET /api/v1/admin/dashboard/kpi-stocks` — Stock en rupture
+- `GET /api/v1/admin/produits` — Gestion produits
+- `GET /api/v1/admin/vendeurs` — Gestion vendeurs (double validation)
+- `GET /api/v1/admin/commandes` — Toutes les commandes
+- `GET /api/v1/admin/utilisateurs` — Gestion utilisateurs
+
+### 🏪 Vendeur (JWT VENDEUR requis)
+- `GET /api/v1/vendeur/produits` — Mes produits
+- `POST /api/v1/vendeur/produits` — Soumettre un produit
+- `GET /api/v1/vendeur/profil` — Mon profil boutique
 
 **[Voir la collection Postman complète →](./Yobante-API.postman_collection.json)**
 
@@ -155,21 +172,25 @@ http://localhost:5000/api-docs
 ## 🔒 Sécurité
 
 ### ✅ Implémenté
-- **JWT** avec 3 secrets différents (access, refresh, reset)
-- **Bcrypt** (12 rounds salt)
+- **JWT** — 3 secrets différents (access/refresh/reset) + `isActive` dans payload (zéro DB call par requête)
+- **Refresh token rotation** — ancien token révoqué à chaque refresh (replay detection)
+- **Bcrypt** — 12 rounds salt
 - **Helmet** — HTTP headers sécurisés
-- **CORS** configurable par environnement
-- **Rate limiting** — 100 req/15min global, 5/15min auth
-- **Validation** — Joi schemas avant traitement
-- **SQL Injection** — Sequelize paramétrage
-- **Password reset** — OTP par email
+- **CORS** — origines explicites (jamais `*` en prod)
+- **Rate limiting** — 100/15min global · 10/15min login · 5/h register · 3/h forgot-password · 20/10min upload
+- **Anti user-enumeration** — messages génériques sur register et forgot-password
+- **Validation Joi** — tous les inputs validés avant traitement
+- **SQL Injection** — Sequelize ORM paramétré
+- **X-Request-ID** — correlation header sur toutes les réponses
+- **Body limit** — 2mb max (anti-DoS)
+- **RBAC** — 3 rôles (ADMIN/CLIENT/VENDEUR) avec middlewares dédiés
+- **Double validation vendeur** — step1 + step2 admin avant activation
 
-### ⚠️ À faire
-- [ ] Audit trail (logs des modifications)
-- [ ] Refresh token rotation
-- [ ] Redis caching
-- [ ] 2FA optionnel
-- [ ] CSRF tokens
+### 🔜 À ajouter (next sprint)
+- Redis pour cache + blacklist JWT révoqués
+- 2FA TOTP optionnel
+- Audit trail (historique actions utilisateur)
+- CSRF tokens (si rendu SSR)
 
 ---
 
@@ -270,9 +291,22 @@ npm run dev
 ## 🔧 Scripts
 
 ```bash
-npm run dev          # Développement (nodemon)
-npm start            # Production
-npm run seed:admin   # Créer compte admin
+npm run dev              # Développement (nodemon)
+npm start                # Production
+npm run seed:admin       # Créer compte admin
+npm run lint             # ESLint
+npm run lint:fix         # ESLint auto-fix
+npm run format           # Prettier
+npm run format:check     # Vérifier formatage (CI)
+npm test                 # Jest
+npm run test:coverage    # Coverage
+
+# Avec Makefile (Docker)
+make dev        # docker compose up --build
+make stop       # docker compose down
+make logs       # Logs backend
+make backup     # Backup PostgreSQL
+make test       # npm test
 ```
 
 ---

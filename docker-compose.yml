@@ -13,6 +13,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-yobantepassword}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -20,6 +21,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   # ─────────────────────────────────────────
   # Backend Node.js
@@ -28,8 +30,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
     container_name: yobante_backend
     restart: unless-stopped
+    env_file:
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,38 +43,15 @@ services:
     environment:
       NODE_ENV: development
       PORT: 5000
-
-      # Base de données — pointe vers le service postgres ci-dessus
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-yobante}
-      DB_USER: ${DB_USER:-yobante}
-      DB_PASSWORD: ${DB_PASSWORD:-yobantepassword}
-
-      # JWT
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      JWT_RESET_SECRET: ${JWT_RESET_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
-
-      # CORS
-      CORS_ORIGIN: ${CORS_ORIGIN:-*}
-
-      # Admin par défaut (seeder)
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      ADMIN_NOM: ${ADMIN_NOM}
-      ADMIN_PRENOM: ${ADMIN_PRENOM}
-
-      # Email (Resend)
-      RESEND_API_KEY: ${RESEND_API_KEY}
-      MAIL_FROM: ${MAIL_FROM}
-
-      # Cloudinary
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
-
+      # Pas de CORS_ORIGIN=* — doit être défini dans .env avec une origine explicite
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     volumes:
       - ./uploads:/app/uploads
 

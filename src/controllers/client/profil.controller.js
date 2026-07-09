@@ -18,7 +18,7 @@ exports.get = async (req, res) => {
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, 'Profil récupéré', {
-      user: formatUser(result.user)
+      user: formatUser(result.user),
     });
   } catch (err) {
     logger.error('Erreur getProfil', { error: err.message });
@@ -37,7 +37,7 @@ exports.update = async (req, res) => {
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, result.message, {
-      user: formatUser(result.user)
+      user: formatUser(result.user),
     });
   } catch (err) {
     logger.error('Erreur updateProfil', { error: err.message });
@@ -56,7 +56,7 @@ exports.updateAvatar = async (req, res) => {
       return ApiResponse.badRequest(res, result.message);
     }
     return ApiResponse.success(200, res, result.message, {
-      avatar: result.avatar
+      avatar: result.avatar,
     });
   } catch (err) {
     logger.error('Erreur updateAvatar', { error: err.message });
@@ -72,7 +72,7 @@ exports.getAdresses = async (req, res) => {
   try {
     const result = await ProfilService.getAdresses(req.user.id);
     return ApiResponse.success(200, res, 'Adresses récupérées', {
-      adresses: result.adresses
+      adresses: result.adresses,
     });
   } catch (err) {
     logger.error('Erreur getAdresses', { error: err.message });
@@ -91,7 +91,7 @@ exports.ajouterAdresse = async (req, res) => {
       return ApiResponse.badRequest(res, result.message);
     }
     return ApiResponse.success(201, res, result.message, {
-      adresse: result.adresse
+      adresse: result.adresse,
     });
   } catch (err) {
     logger.error('Erreur ajouterAdresse', { error: err.message });
@@ -110,7 +110,7 @@ exports.updateAdresse = async (req, res) => {
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, result.message, {
-      adresse: result.adresse
+      adresse: result.adresse,
     });
   } catch (err) {
     logger.error('Erreur updateAdresse', { error: err.message });
@@ -126,6 +126,7 @@ exports.supprimerAdresse = async (req, res) => {
   try {
     const result = await ProfilService.supprimerAdresse(req.user.id, req.params.id);
     if (!result.success) {
+      if (result.status === 409) return ApiResponse.conflict(res, result.message);
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, result.message);
@@ -146,7 +147,7 @@ exports.setDefault = async (req, res) => {
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, result.message, {
-      adresse: result.adresse
+      adresse: result.adresse,
     });
   } catch (err) {
     logger.error('Erreur setAdresseDefault', { error: err.message });

@@ -1,43 +1,35 @@
-// ─────────────────────────────────────────────────────────────
-// services/admin/produit.service.js
-// ─────────────────────────────────────────────────────────────
 const { Op } = require('sequelize');
-const { Produit, Categorie } = require('../../models');
+const { Produit, Categorie, User } = require('../../models');
 const { generateUniqueSlug } = require('../../utils/slugify');
 const paginate = require('../../utils/paginate');
-const { uploadImage, deleteImage } = require('../../middlewares/uploadService');
+const { uploadImage, deleteImage } = require('../upload.service');
+const { STATUT_VALIDATION_PRODUIT } = require('../../constants');
 
 class GestionProduitService {
-
   static async createProduit(data, files = []) {
     const categorie = await Categorie.findByPk(data.categorieId);
-    if (!categorie) {
-      return { success: false, message: "Catégorie introuvable" };
-    }
+    if (!categorie) return { success: false, message: 'Catégorie introuvable' };
 
     const slug = await generateUniqueSlug(Produit, data.nom);
-
     const updates = { ...data, slug };
+
     if (files && files.length) {
-      updates.images = await Promise.all(files.map((f) => uploadImage(f.buffer, f.originalname, 'produits')));
+      updates.images = await Promise.all(
+        files.map((f) => uploadImage(f.buffer, f.originalname, 'produits'))
+      );
     }
 
     const produit = await Produit.create(updates);
-
-    return { success: true, message: "Produit créé avec succès", produit };
+    return { success: true, message: 'Produit créé avec succès', produit };
   }
 
   static async updateProduit(id, data, files = []) {
     const produit = await Produit.findByPk(id);
-    if (!produit) {
-      return { success: false, message: "Produit introuvable" };
-    }
+    if (!produit) return { success: false, message: 'Produit introuvable' };
 
     if (data.categorieId) {
       const categorie = await Categorie.findByPk(data.categorieId);
-      if (!categorie) {
-        return { success: false, message: "Catégorie introuvable" };
-      }
+      if (!categorie) return { success: false, message: 'Catégorie introuvable' };
     }
 
     const updates = { ...data };
@@ -47,39 +39,41 @@ class GestionProduitService {
 
     if (files && files.length) {
       const anciennesImages = produit.images || [];
-      updates.images = await Promise.all(files.map((f) => uploadImage(f.buffer, f.originalname, 'produits')));
+      updates.images = await Promise.all(
+        files.map((f) => uploadImage(f.buffer, f.originalname, 'produits'))
+      );
       await Promise.all(anciennesImages.map((url) => deleteImage(url)));
     }
 
     await produit.update(updates);
-
-    return { success: true, message: "Produit mis à jour avec succès", produit };
+    return { success: true, message: 'Produit mis à jour avec succès', produit };
   }
 
   static async deleteProduit(id) {
     const produit = await Produit.findByPk(id);
-    if (!produit) {
-      return { success: false, message: "Produit introuvable" };
-    }
-
+    if (!produit) return { success: false, message: 'Produit introuvable' };
     await produit.update({ isActive: false });
-
-    return { success: true, message: "Produit désactivé avec succès" };
+    return { success: true, message: 'Produit désactivé avec succès' };
   }
 
   static async getProduitById(id) {
     const produit = await Produit.findByPk(id, {
       include: [{ model: Categorie, as: 'categorie' }],
     });
-
-    if (!produit) {
-      return { success: false, message: "Produit introuvable" };
-    }
-
+    if (!produit) return { success: false, message: 'Produit introuvable' };
     return { success: true, produit };
   }
 
-  static async getAllProduits({ page, limit, categorieId, isActive, isFeatured, prixMin, prixMax, search } = {}) {
+  static async getAllProduits({
+    page,
+    limit,
+    categorieId,
+    isActive,
+    isFeatured,
+    prixMin,
+    prixMax,
+    search,
+  } = {}) {
     const { page: p, limit: l, offset } = paginate(page, limit);
 
     const where = {};
@@ -108,7 +102,7 @@ class GestionProduitService {
 
     return {
       success: true,
-      message: "Liste des produits",
+      message: 'Liste des produits',
       produits: rows,
       pagination: { total: count, totalPages: Math.ceil(count / l), page: p, limit: l },
     };
@@ -116,37 +110,99 @@ class GestionProduitService {
 
   static async updateStock(id, quantite) {
     const produit = await Produit.findByPk(id);
-    if (!produit) {
-      return { success: false, message: "Produit introuvable" };
-    }
-
+    if (!produit) return { success: false, message: 'Produit introuvable' };
     await produit.update({ stock: quantite });
-
-    return { success: true, message: "Stock mis à jour avec succès", produit };
+    return { success: true, message: 'Stock mis à jour avec succès', produit };
   }
 
   static async toggleFeatured(id) {
     const produit = await Produit.findByPk(id);
-    if (!produit) {
-      return { success: false, message: "Produit introuvable" };
-    }
-
+    if (!produit) return { success: false, message: 'Produit introuvable' };
     produit.isFeatured = !produit.isFeatured;
     await produit.save();
-
-    return { success: true, message: "Produit mis à jour avec succès", produit };
+    return { success: true, message: 'Produit mis à jour avec succès', produit };
   }
 
   static async toggleVisibilite(id) {
     const produit = await Produit.findByPk(id);
-    if (!produit) {
-      return { success: false, message: "Produit introuvable" };
-    }
-
+    if (!produit) return { success: false, message: 'Produit introuvable' };
     produit.isActive = !produit.isActive;
     await produit.save();
+    return { success: true, message: 'Produit mis à jour avec succès', produit };
+  }
 
-    return { success: true, message: "Produit mis à jour avec succès", produit };
+  /**
+   * Validation step 1 — protégée contre la double validation simultanée.
+   * UPDATE atomique WHERE statutValidation = 'en_attente' uniquement.
+   * Si deux admins cliquent en même temps : un seul obtient nbRows=1.
+   */
+  static async validerProduitStep1(id) {
+    const [nbRows] = await Produit.update(
+      { statutValidation: STATUT_VALIDATION_PRODUIT.VALIDE_STEP1 },
+      { where: { id, statutValidation: STATUT_VALIDATION_PRODUIT.EN_ATTENTE } }
+    );
+
+    if (nbRows === 0) {
+      const produit = await Produit.findByPk(id);
+      if (!produit) return { success: false, message: 'Produit introuvable' };
+      return {
+        success: false,
+        message: `Statut actuel: ${produit.statutValidation} — attendu: en_attente`,
+      };
+    }
+
+    const produit = await Produit.findByPk(id);
+    return { success: true, message: 'Étape 1 validée', produit };
+  }
+
+  /**
+   * Validation step 2 — WHERE statutValidation = 'valide_step1'.
+   * Rend le produit visible sur le catalogue.
+   */
+  static async validerProduitStep2(id) {
+    const [nbRows] = await Produit.update(
+      { statutValidation: STATUT_VALIDATION_PRODUIT.VALIDE, isActive: true },
+      { where: { id, statutValidation: STATUT_VALIDATION_PRODUIT.VALIDE_STEP1 } }
+    );
+
+    if (nbRows === 0) {
+      const produit = await Produit.findByPk(id);
+      if (!produit) return { success: false, message: 'Produit introuvable' };
+      return {
+        success: false,
+        message: `Statut actuel: ${produit.statutValidation} — attendu: valide_step1`,
+      };
+    }
+
+    const produit = await Produit.findByPk(id);
+    return { success: true, message: 'Produit validé et publié sur le catalogue', produit };
+  }
+
+  static async rejeterProduit(id, motif) {
+    const [nbRows] = await Produit.update(
+      { statutValidation: STATUT_VALIDATION_PRODUIT.REJETE, isActive: false },
+      { where: { id } }
+    );
+    if (nbRows === 0) return { success: false, message: 'Produit introuvable' };
+    const produit = await Produit.findByPk(id);
+    return { success: true, message: `Produit rejeté${motif ? ` : ${motif}` : ''}`, produit };
+  }
+
+  static async getProduitsAValider() {
+    const { rows, count } = await Produit.findAndCountAll({
+      where: {
+        statutValidation: [
+          STATUT_VALIDATION_PRODUIT.EN_ATTENTE,
+          STATUT_VALIDATION_PRODUIT.VALIDE_STEP1,
+        ],
+      },
+      include: [
+        { model: Categorie, as: 'categorie' },
+        { model: User, as: 'vendeur', attributes: ['id', 'nom', 'prenom', 'email'] },
+      ],
+      order: [['createdAt', 'ASC']],
+    });
+    return { success: true, produits: rows, total: count };
   }
 }
 

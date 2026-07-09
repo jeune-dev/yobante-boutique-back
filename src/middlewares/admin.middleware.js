@@ -1,38 +1,36 @@
-// ─────────────────────────────────────────────────────────────
-// middlewares/admin.middleware.js
-// ─────────────────────────────────────────────────────────────
 const jwt = require('jsonwebtoken');
 const { jwtConfig } = require('../config/security');
-const { User } = require('../models');
+const AppError = require('../utils/AppError');
+const { ROLES } = require('../constants');
 
-const adminMiddleware = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Token manquant ou invalide' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, jwtConfig.secret);
-
-    const user = await User.findByPk(decoded.id);
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur introuvable' });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({ message: 'Votre compte est inactif. Accès refusé.' });
-    }
-
-    if (user.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Accès refusé. Réservé aux administrateurs.' });
-    }
-
-    req.user = user;
-    next();
-  } catch (err) {
-    return res.status(401).json({ message: 'Token invalide' });
+/**
+ * Authentifie ET vérifie le rôle ADMIN depuis le payload JWT — aucune requête DB.
+ */
+const adminMiddleware = (_req, _res, next) => {
+  const authHeader = _req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next(new AppError('Token manquant ou invalide', 401));
   }
+
+  const token = authHeader.split(' ')[1];
+  let decoded;
+  try {
+    decoded = jwt.verify(token, jwtConfig.secret);
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') return next(new AppError('Token expiré', 401));
+    return next(new AppError('Token invalide', 401));
+  }
+
+  if (!decoded.isActive) {
+    return next(new AppError('Votre compte est inactif. Accès refusé.', 403));
+  }
+
+  if (decoded.role !== ROLES.ADMIN) {
+    return next(new AppError('Accès refusé. Réservé aux administrateurs.', 403));
+  }
+
+  _req.user = { id: decoded.id, role: decoded.role, isActive: decoded.isActive };
+  next();
 };
 
 module.exports = adminMiddleware;

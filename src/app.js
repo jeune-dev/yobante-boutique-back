@@ -1,73 +1,71 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 
 const openapiSpec = require('./docs/openapi');
 const { corsConfig } = require('./config/security');
 const { globalLimiter } = require('./middlewares/rateLimit.middleware');
+const correlationId = require('./middlewares/correlationId.middleware');
+const requestLogger = require('./middlewares/requestLogger.middleware');
 const errorMiddleware = require('./middlewares/error.middleware');
 
 const app = express();
 
-// ── Trust proxy (important pour déploiement Render / proxies) ──────────────────
 app.set('trust proxy', 1);
+
+// ── Compression ───────────────────────────────────────────────────────────────
+app.use(compression());
+
+// ── Observabilité ─────────────────────────────────────────────────────────────
+app.use(correlationId);
+app.use(requestLogger);
 
 // ── Sécurité ──────────────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors(corsConfig));
 app.use(globalLimiter);
 
-// ── Parsers ───────────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// ── Parsers (2mb max — 10mb est un vecteur DoS) ───────────────────────────────
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 
-// ── Routes ────────────────────────────────────────────────────────────────────
-
-/**
- * Health check — utilisé par les orchestrateurs (Render, Docker, K8s)
- */
+// ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
+  res.status(200).json({
+    status: 'ok',
     env: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
-/**
- * API Documentation — Swagger/OpenAPI
- */
+// ── API Documentation ─────────────────────────────────────────────────────────
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
-/**
- * Auth routes (publiques)
- */
-app.use('/api/auth', require('./routes/auth.routes'));
+// ── Routes /api/v1 ────────────────────────────────────────────────────────────
+app.use('/api/v1/auth', require('./routes/auth.routes'));
+app.use('/api/v1/admin', require('./routes/admin/index'));
+app.use('/api/v1/vendeur', require('./routes/vendeur/index'));
+app.use('/api/v1/produits', require('./routes/client/produit.route'));
+app.use('/api/v1/panier', require('./routes/client/panier.route'));
+app.use('/api/v1/commandes', require('./routes/client/commande.route'));
+app.use('/api/v1/avis', require('./routes/client/avis.route'));
+app.use('/api/v1/profile', require('./routes/client/profil.route'));
+app.use('/api/v1/bannieres', require('./routes/client/banniere.route'));
+app.use('/api/v1/promotions', require('./routes/client/promotion.route'));
+app.use('/api/v1/frais-livraisons', require('./routes/client/frais-livraison.route'));
 
-/**
- * Admin routes (protégées)
- */
-app.use('/api/admin', require('./routes/admin/index'));
-
-/**
- * Client/Shop routes (publiques et partiellement protégées)
- */
-app.use('/api/produits', require('./routes/client/produit.route'));
-app.use('/api/panier', require('./routes/client/panier.route'));
-app.use('/api/commandes', require('./routes/client/commande.route'));
-app.use('/api/avis', require('./routes/client/avis.route'));
-app.use('/api/profile', require('./routes/client/profil.route'));
+// ── Rétrocompatibilité : redirige /api/* → /api/v1/* ─────────────────────────
+app.use('/api', (req, res) => {
+  res.redirect(301, `/api/v1${req.url}`);
+});
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: 'Route introuvable',
-    path: _req.path
-  });
+  res.status(404).json({ success: false, message: 'Route introuvable', path: _req.path });
 });
 
 // ── Global Error Handler ──────────────────────────────────────────────────────
