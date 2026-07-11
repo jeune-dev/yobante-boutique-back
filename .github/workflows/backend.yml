@@ -88,13 +88,51 @@ jobs:
         run: npm test
 
   # ────────────────────────────────────────────────────────────────
-  # 3. Build & push Docker image (seulement sur main)
+  # 2bis. Détection des secrets configurés (pour ne pas faire échouer la CI
+  #       quand Docker Hub / SSH ne sont pas configurés — ex. déploiement Render).
+  # ────────────────────────────────────────────────────────────────
+  config:
+    name: Check configuration
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      has_dockerhub: ${{ steps.flags.outputs.has_dockerhub }}
+      has_staging: ${{ steps.flags.outputs.has_staging }}
+      has_prod: ${{ steps.flags.outputs.has_prod }}
+    steps:
+      - id: flags
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "has_dockerhub=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_dockerhub=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$STAGING_HOST" ]; then
+            echo "has_staging=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_staging=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$PROD_HOST" ]; then
+            echo "has_prod=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_prod=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ────────────────────────────────────────────────────────────────
+  # 3. Build & push Docker image (main, si Docker Hub configuré)
   # ────────────────────────────────────────────────────────────────
   docker:
     name: Build & Push Docker
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test, config]
+    if: >-
+      github.ref == 'refs/heads/main' && github.event_name == 'push' &&
+      needs.config.outputs.has_dockerhub == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -125,8 +163,10 @@ jobs:
   deploy-staging:
     name: Deploy Staging
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: [test, config]
+    if: >-
+      github.ref == 'refs/heads/develop' && github.event_name == 'push' &&
+      needs.config.outputs.has_staging == 'true'
     environment: staging
 
     steps:
@@ -148,8 +188,10 @@ jobs:
   deploy-production:
     name: Deploy Production
     runs-on: ubuntu-latest
-    needs: docker
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [docker, config]
+    if: >-
+      github.ref == 'refs/heads/main' && github.event_name == 'push' &&
+      needs.config.outputs.has_prod == 'true'
     environment: production
 
     steps:
