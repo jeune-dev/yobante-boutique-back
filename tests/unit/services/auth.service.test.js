@@ -133,10 +133,8 @@ describe('AuthService', () => {
       mockRefreshToken.create.mockResolvedValue({});
       mockRefreshToken.destroy.mockResolvedValue(undefined);
       
-      jwt.sign.mockImplementation((payload, secret, options) => {
-        if (options.expiresIn === '1h') return token;
-        return refreshToken;
-      });
+      // Le service signe l'access token en premier, puis le refresh token.
+      jwt.sign.mockReturnValueOnce(token).mockReturnValueOnce(refreshToken);
       jwt.decode.mockReturnValue({ exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const result = await AuthService.login({
