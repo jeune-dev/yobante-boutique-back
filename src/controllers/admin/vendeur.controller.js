@@ -1,5 +1,6 @@
 const GestionVendeurService = require('../../services/admin/vendeur.service');
 const ApiResponse = require('../../utils/ApiResponse');
+const logger = require('../../config/logger');
 
 exports.creerVendeur = async (req, res) => {
   try {
@@ -10,6 +11,7 @@ exports.creerVendeur = async (req, res) => {
       profil: result.profil,
     });
   } catch (err) {
+    logger.error('Erreur creerVendeur:', { message: err.message, stack: err.stack });
     return ApiResponse.internalServerError(res, err.message);
   }
 };

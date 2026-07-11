@@ -8,7 +8,10 @@ const logger = require('../../config/logger');
 exports.getAll = async (req, res) => {
   try {
     const result = await GestionAvisService.getAllAvis(req.query);
-    return ApiResponse.success(200, res, 'Avis récupérés', { avis: result.avis });
+    return ApiResponse.success(200, res, 'Avis récupérés', {
+      avis: result.avis,
+      pagination: result.pagination,
+    });
   } catch (err) {
     logger.error('Erreur getAll avis :', err);
     return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération des avis');

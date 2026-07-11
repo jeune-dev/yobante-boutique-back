@@ -54,8 +54,6 @@ const Produit = sequelize.define(
     statutValidation: {
       type: DataTypes.ENUM('en_attente', 'valide_step1', 'valide', 'rejete'),
       defaultValue: 'valide',
-      comment:
-        'Workflow de validation : produits vendeur passent par en_attente -> valide_step1 -> valide',
     },
     vendeurId: {
       type: DataTypes.UUID,

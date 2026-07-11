@@ -60,7 +60,7 @@ app.use('/api/v1/frais-livraisons', require('./routes/client/frais-livraison.rou
 
 // ── Rétrocompatibilité : redirige /api/* → /api/v1/* ─────────────────────────
 app.use('/api', (req, res) => {
-  res.redirect(301, `/api/v1${req.url}`);
+  res.redirect(302, `/api/v1${req.url}`);
 });
 
 // ── 404 ───────────────────────────────────────────────────────────────────────

@@ -4,55 +4,15 @@ const sequelize = require('./config/db');
 const logger = require('./config/logger');
 const app = require('./app');
 
-// Initialise toutes les associations Sequelize
-const {
-  User,
-  Categorie,
-  Produit,
-  Adresse,
-  Commande,
-  CommandeItem,
-  Paiement,
-  Panier,
-  Avis,
-  RefreshToken,
-  UserOtp,
-  ProfilVendeur,
-  Banniere,
-  Promotion,
-  FraisLivraison,
-} = require('./models');
+// Charge les modèles pour initialiser les associations Sequelize
+require('./models');
 
 const PORT = process.env.PORT || 5000;
-const isProd = process.env.NODE_ENV === 'production';
 
 async function startServer() {
   try {
     await sequelize.authenticate();
     logger.info('Connexion PostgreSQL établie');
-
-    // En production : force:false uniquement (jamais alter — utiliser des migrations Sequelize)
-    // En dev : alter:true pour synchroniser les changements de schéma automatiquement
-    const syncOptions = isProd ? { force: false } : { alter: true };
-
-    // Ordre explicite : tables parents avant enfants (FK constraints)
-    await User.sync(syncOptions);
-    await Categorie.sync(syncOptions);
-    await Produit.sync(syncOptions);
-    await Adresse.sync(syncOptions);
-    await Commande.sync(syncOptions);
-    await CommandeItem.sync(syncOptions);
-    await Paiement.sync(syncOptions);
-    await Panier.sync(syncOptions);
-    await Avis.sync(syncOptions);
-    await RefreshToken.sync(syncOptions);
-    await UserOtp.sync(syncOptions);
-    await ProfilVendeur.sync(syncOptions);
-    await Banniere.sync(syncOptions);
-    await Promotion.sync(syncOptions);
-    await FraisLivraison.sync(syncOptions);
-
-    logger.info('Modèles synchronisés avec la base de données');
 
     const seedAdmin = require('./seeders/adminSeeder');
     await seedAdmin();
@@ -73,8 +33,8 @@ process.on('uncaughtException', (err) => {
 });
 
 process.on('unhandledRejection', (reason) => {
+  // Log only — ne pas tuer le process pour les rejections dans les requêtes HTTP
   logger.error('Unhandled Rejection', { reason: String(reason) });
-  process.exit(1);
 });
 
 startServer();

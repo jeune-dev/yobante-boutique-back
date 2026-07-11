@@ -14,9 +14,10 @@ class GestionProduitService {
     const updates = { ...data, slug };
 
     if (files && files.length) {
-      updates.images = await Promise.all(
+      const results = await Promise.allSettled(
         files.map((f) => uploadImage(f.buffer, f.originalname, 'produits'))
       );
+      updates.images = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
     }
 
     const produit = await Produit.create(updates);
@@ -39,10 +40,13 @@ class GestionProduitService {
 
     if (files && files.length) {
       const anciennesImages = produit.images || [];
-      updates.images = await Promise.all(
+      const results = await Promise.allSettled(
         files.map((f) => uploadImage(f.buffer, f.originalname, 'produits'))
       );
-      await Promise.all(anciennesImages.map((url) => deleteImage(url)));
+      updates.images = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+      if (updates.images.length > 0) {
+        await Promise.allSettled(anciennesImages.map((url) => deleteImage(url)));
+      }
     }
 
     await produit.update(updates);
