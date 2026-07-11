@@ -7,6 +7,39 @@ const ApiResponse = require('../../utils/ApiResponse');
 const logger = require('../../config/logger');
 const formatUser = require('../../utils/formatUser');
 
+// ──────────────────────────── ROUTE UNIFIÉE ────────────────────────────────
+
+exports.getAll = async (req, res) => {
+  try {
+    const { search, page, limit } = req.query;
+    const result = await GestionUserService.listerClients({ search, page, limit });
+    return ApiResponse.success(200, res, result.message, {
+      users: result.clients.map(formatUser),
+      pagination: result.pagination,
+    });
+  } catch (err) {
+    logger.error('Erreur dans getAll users :', err);
+    return ApiResponse.internalServerError(
+      res,
+      'Erreur serveur lors de la récupération des utilisateurs'
+    );
+  }
+};
+
+exports.toggleActivation = async (req, res) => {
+  try {
+    const user = await require('../../models').User.findByPk(req.params.id);
+    if (!user) return ApiResponse.notFound(res, 'Utilisateur introuvable');
+    await user.update({ isActive: !user.isActive });
+    return ApiResponse.success(200, res, `Compte ${user.isActive ? 'activé' : 'désactivé'}`, {
+      user: formatUser(user),
+    });
+  } catch (err) {
+    logger.error('Erreur dans toggleActivation :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur lors du changement de statut');
+  }
+};
+
 // ──────────────────────────── ADMINS ───────────────────────────────────────
 
 exports.listeAdmins = async (req, res) => {

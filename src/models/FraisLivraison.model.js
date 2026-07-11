@@ -30,7 +30,7 @@ const FraisLivraison = sequelize.define(
     },
     devise: {
       type: DataTypes.STRING(10),
-      defaultValue: 'EUR',
+      defaultValue: 'FCFA',
     },
     delaiEstime: {
       type: DataTypes.STRING(100),

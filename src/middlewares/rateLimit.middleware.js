@@ -6,11 +6,11 @@ const _base = {
   keyGenerator: (req) => req.ip,
 };
 
-// 100 req / 15 min par IP — toutes routes confondues
+// 1000 req / 15 min par IP en dev, 100 en prod
 const globalLimiter = rateLimit({
   ..._base,
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000,
 });
 
 // 10 tentatives / 15 min — login + refresh (brute force)

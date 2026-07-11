@@ -7,6 +7,10 @@ const adminMiddleware = require('../../middlewares/admin.middleware');
 const validate = require('../../middlewares/validate.middleware');
 const { creerAdminSchema, modifierAdminSchema } = require('../../validations/admin.validation');
 
+// ── Route unifiée ────────────────────────────────────────────────────────────
+router.get('/', adminMiddleware, ctrl.getAll);
+router.patch('/:id/toggle', adminMiddleware, ctrl.toggleActivation);
+
 // ── Admins ──────────────────────────────────────────────────────────────────
 router.get('/admins', adminMiddleware, ctrl.listeAdmins);
 router.post('/admins', adminMiddleware, validate(creerAdminSchema), ctrl.ajouterAdmin);

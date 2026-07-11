@@ -11,6 +11,10 @@ services:
       POSTGRES_DB: ${DB_NAME:-yobante}
       POSTGRES_USER: ${DB_USER:-yobante}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-yobantepassword}
+    command: >
+      postgres
+      -c max_locks_per_transaction=256
+      -c max_pred_locks_per_transaction=256
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro

@@ -9,10 +9,14 @@ exports.getStats = async (req, res) => {
   try {
     const result = await DashboardService.getStatsGlobales();
     return ApiResponse.success(200, res, 'Statistiques récupérées', {
-      totalClients: result.totalClients,
-      totalProduits: result.totalProduits,
-      totalCommandes: result.totalCommandes,
-      chiffreAffaires: result.chiffreAffaires,
+      stats: {
+        totalClients: result.totalClients,
+        totalVendeurs: result.totalVendeurs,
+        totalCategories: result.totalCategories,
+        totalProduits: result.totalProduits,
+        totalCommandes: result.totalCommandes,
+        chiffreAffaires: result.chiffreAffaires,
+      },
     });
   } catch (err) {
     logger.error('Erreur getStats dashboard :', err);

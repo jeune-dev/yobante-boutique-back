@@ -13,6 +13,6 @@ router.use('/users', require('./user.route'));
 router.use('/vendeurs', require('./vendeur.route'));
 router.use('/bannieres', require('./banniere.route'));
 router.use('/promotions', require('./promotion.route'));
-router.use('/frais-livraisons', require('./frais-livraison.route'));
+router.use('/frais-livraison', require('./frais-livraison.route'));
 
 module.exports = router;

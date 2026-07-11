@@ -21,25 +21,18 @@ const {
   Banniere,
   Promotion,
   FraisLivraison,
-  Favori,
 } = require('./models');
 
 const PORT = process.env.PORT || 5000;
-const isProd = process.env.NODE_ENV === 'production';
 
 async function startServer() {
   try {
     await sequelize.authenticate();
     logger.info('Connexion PostgreSQL établie');
 
-    // force:false partout — crée les tables manquantes sans jamais les altérer.
-    // On n'utilise PAS alter:true : sur Postgres, Sequelize régénère à chaque boot
-    // un `ALTER COLUMN ... TYPE ... USING` invalide pour les colonnes ENUM
-    // (ex. Produit.statutValidation), ce qui fait planter tout redémarrage.
-    // L'évolution de schéma passe par les migrations Sequelize.
+    // force:false — crée les tables manquantes sans jamais les altérer.
     const syncOptions = { force: false };
 
-    // Ordre explicite : tables parents avant enfants (FK constraints)
     await User.sync(syncOptions);
     await Categorie.sync(syncOptions);
     await Produit.sync(syncOptions);
@@ -55,7 +48,6 @@ async function startServer() {
     await Banniere.sync(syncOptions);
     await Promotion.sync(syncOptions);
     await FraisLivraison.sync(syncOptions);
-    await Favori.sync(syncOptions);
 
     logger.info('Modèles synchronisés avec la base de données');
 
@@ -79,7 +71,6 @@ process.on('uncaughtException', (err) => {
 
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled Rejection', { reason: String(reason) });
-  process.exit(1);
 });
 
 startServer();
