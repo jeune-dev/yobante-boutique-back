@@ -16,6 +16,8 @@ jest.mock('../../src/config/logger', () => ({
 // on le neutralise pour que les assertions portent sur la logique métier, pas sur le quota.
 jest.mock('../../src/middlewares/rateLimit.middleware', () => ({
   authLimiter: (req, res, next) => next(),
+  registerLimiter: (req, res, next) => next(),
+  forgotPasswordLimiter: (req, res, next) => next(),
   globalLimiter: (req, res, next) => next(),
 }));
 
@@ -35,6 +37,9 @@ jest.mock('../../src/services/auth.service', () => mockAuthService);
 const app = express();
 app.use(express.json());
 app.use('/api/auth', require('../../src/routes/auth.routes'));
+// Gestionnaire d'erreurs global : convertit les erreurs (ex. validation Joi
+// propagée par validate → next(err)) en réponses HTTP uniformes (400, etc.).
+app.use(require('../../src/middlewares/error.middleware'));
 
 describe('Auth Integration Tests', () => {
   beforeEach(() => {

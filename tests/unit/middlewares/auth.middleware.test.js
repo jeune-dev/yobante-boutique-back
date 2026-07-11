@@ -1,122 +1,101 @@
-// tests/unit/middlewares/auth.middleware.test.js
-
+// Tests du middleware d'authentification.
+// Le middleware actuel NE touche PAS la base : il fait confiance au payload JWT
+// signé ({ id, role, isActive }) et propage les erreurs via next(AppError).
 const jwt = require('jsonwebtoken');
 const authMiddleware = require('../../../src/middlewares/auth.middleware');
-const { User } = require('../../../src/models');
-const userFixture = require('../../fixtures/user.fixture');
 
 jest.mock('jsonwebtoken');
-jest.mock('../../../src/models');
 
 describe('Auth Middleware', () => {
   let req, res, next;
 
   beforeEach(() => {
-    req = {
-      headers: {}
-    };
-    res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn()
-    };
+    req = { headers: {} };
+    res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     next = jest.fn();
     jest.clearAllMocks();
   });
 
-  it('devrait passer au middleware suivant avec un token valide', async () => {
-    const token = 'valid-token';
-    const decoded = { id: userFixture.validUser.id, role: 'CLIENT' };
+  it('devrait appeler next() avec un token valide (compte actif)', () => {
+    req.headers.authorization = 'Bearer valid-token';
+    jwt.verify.mockReturnValue({ id: 'user-1', role: 'CLIENT', isActive: true });
 
-    req.headers.authorization = `Bearer ${token}`;
-    jwt.verify.mockReturnValue(decoded);
-    User.findByPk.mockResolvedValue(userFixture.validUser);
+    authMiddleware(req, res, next);
 
-    await authMiddleware(req, res, next);
-
-    expect(next).toHaveBeenCalled();
-    expect(req.user).toEqual(userFixture.validUser);
+    expect(next).toHaveBeenCalledWith();
+    expect(req.user).toEqual({ id: 'user-1', role: 'CLIENT', isActive: true });
   });
 
-  it('devrait rejeter un token manquant', async () => {
+  it('devrait rejeter (401) un token manquant', () => {
     req.headers.authorization = undefined;
 
-    await authMiddleware(req, res, next);
+    authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Token manquant ou invalide' })
-    );
-    expect(next).not.toHaveBeenCalled();
+    const err = next.mock.calls[0][0];
+    expect(err).toBeDefined();
+    expect(err.statusCode).toBe(401);
+    expect(err.message).toBe('Token manquant ou invalide');
+    expect(req.user).toBeUndefined();
   });
 
-  it('devrait rejeter un token avec mauvais format', async () => {
+  it('devrait rejeter (401) un token au mauvais format', () => {
     req.headers.authorization = 'InvalidFormat token';
 
-    await authMiddleware(req, res, next);
+    authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(next).not.toHaveBeenCalled();
+    const err = next.mock.calls[0][0];
+    expect(err.statusCode).toBe(401);
   });
 
-  it('devrait rejeter un token expiré', async () => {
-    const token = 'expired-token';
-    req.headers.authorization = `Bearer ${token}`;
+  it('devrait rejeter (401) un token expiré', () => {
+    req.headers.authorization = 'Bearer expired-token';
     jwt.verify.mockImplementation(() => {
-      throw new Error('Token expired');
+      const e = new Error('jwt expired');
+      e.name = 'TokenExpiredError';
+      throw e;
     });
 
-    await authMiddleware(req, res, next);
+    authMiddleware(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Token invalide' })
-    );
+    const err = next.mock.calls[0][0];
+    expect(err.statusCode).toBe(401);
+    expect(err.message).toBe('Token expiré');
   });
 
-  it('devrait rejeter un utilisateur inexistant', async () => {
-    const token = 'valid-token';
-    const decoded = { id: 'non-existent-id', role: 'CLIENT' };
+  it('devrait rejeter (401) un token invalide', () => {
+    req.headers.authorization = 'Bearer bad-token';
+    jwt.verify.mockImplementation(() => {
+      throw new Error('invalid signature');
+    });
 
-    req.headers.authorization = `Bearer ${token}`;
-    jwt.verify.mockReturnValue(decoded);
-    User.findByPk.mockResolvedValue(null);
+    authMiddleware(req, res, next);
 
-    await authMiddleware(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Utilisateur introuvable' })
-    );
+    const err = next.mock.calls[0][0];
+    expect(err.statusCode).toBe(401);
+    expect(err.message).toBe('Token invalide');
   });
 
-  it('devrait rejeter un compte désactivé', async () => {
-    const token = 'valid-token';
-    const decoded = { id: userFixture.inactiveUser.id, role: 'CLIENT' };
+  it('devrait rejeter (403) un compte désactivé', () => {
+    req.headers.authorization = 'Bearer valid-token';
+    jwt.verify.mockReturnValue({ id: 'user-1', role: 'CLIENT', isActive: false });
 
-    req.headers.authorization = `Bearer ${token}`;
-    jwt.verify.mockReturnValue(decoded);
-    User.findByPk.mockResolvedValue(userFixture.inactiveUser);
+    authMiddleware(req, res, next);
 
-    await authMiddleware(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Compte désactivé. Contactez le support.' })
-    );
+    const err = next.mock.calls[0][0];
+    expect(err.statusCode).toBe(403);
+    expect(err.message).toBe('Compte désactivé. Contactez le support.');
+    expect(req.user).toBeUndefined();
   });
 
-  it('devrait attacher l\'utilisateur à req.user', async () => {
-    const token = 'valid-token';
-    const decoded = { id: userFixture.validUser.id, role: 'CLIENT' };
+  it('devrait attacher { id, role, isActive } à req.user', () => {
+    req.headers.authorization = 'Bearer valid-token';
+    jwt.verify.mockReturnValue({ id: 'user-42', role: 'ADMIN', isActive: true });
 
-    req.headers.authorization = `Bearer ${token}`;
-    jwt.verify.mockReturnValue(decoded);
-    User.findByPk.mockResolvedValue(userFixture.validUser);
-
-    await authMiddleware(req, res, next);
+    authMiddleware(req, res, next);
 
     expect(req.user).toBeDefined();
-    expect(req.user.id).toBe(userFixture.validUser.id);
-    expect(req.user.email).toBe(userFixture.validUser.email);
+    expect(req.user.id).toBe('user-42');
+    expect(req.user.role).toBe('ADMIN');
+    expect(req.user.isActive).toBe(true);
   });
 });

@@ -81,16 +81,19 @@ describe('AuthService', () => {
       expect(mockTransaction.commit).toHaveBeenCalled();
     });
 
-    it('devrait refuser un email déjà utilisé', async () => {
+    it('email déjà utilisé : ne crée pas de compte et renvoie un message neutre (anti-énumération)', async () => {
       const { registerData } = userFixture;
-      
+
       mockSequelize.transaction.mockResolvedValue(mockTransaction);
       mockUser.findOne.mockResolvedValue(userFixture.validUser);
 
       const result = await AuthService.register(registerData);
 
-      expect(result.success).toBe(false);
-      expect(result.message).toBe('Cet email est déjà utilisé');
+      // Le service ne révèle pas l'existence de l'email : succès + message générique.
+      expect(result.success).toBe(true);
+      expect(result.message).toBe(
+        "Si cet email n'est pas encore enregistré, votre compte vient d'être créé."
+      );
       expect(mockUser.create).not.toHaveBeenCalled();
       expect(mockTransaction.rollback).toHaveBeenCalled();
     });
