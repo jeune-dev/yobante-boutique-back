@@ -10,9 +10,9 @@ const { avisSchema, updateAvisSchema } = require('../../validations/avis.validat
 
 router.use(auth, checkActiveUser);
 
-router.get('/',       ctrl.getMes);
-router.post('/',      validate(avisSchema), ctrl.create);
-router.put('/:id',    validate(updateAvisSchema), ctrl.update);
+router.get('/', ctrl.getMes);
+router.post('/', validate(avisSchema), ctrl.create);
+router.put('/:id', validate(updateAvisSchema), ctrl.update);
 router.delete('/:id', ctrl.remove);
 
 module.exports = router;

@@ -7,13 +7,13 @@ const adminMiddleware = require('../../middlewares/admin.middleware');
 const validate = require('../../middlewares/validate.middleware');
 const { rejeterCommandeSchema } = require('../../validations/commande.validation');
 
-router.get('/',                    adminMiddleware, ctrl.getAll);
-router.get('/export',              adminMiddleware, ctrl.exportCsv);
-router.get('/:id',                 adminMiddleware, ctrl.getOne);
-router.patch('/:id/valider',       adminMiddleware, ctrl.valider);
-router.patch('/:id/rejeter',       adminMiddleware, validate(rejeterCommandeSchema), ctrl.rejeter);
-router.patch('/:id/preparation',   adminMiddleware, ctrl.mettreEnPreparation);
-router.patch('/:id/expedier',      adminMiddleware, ctrl.marquerExpediee);
-router.patch('/:id/livrer',        adminMiddleware, ctrl.marquerLivree);
+router.get('/', adminMiddleware, ctrl.getAll);
+router.get('/export', adminMiddleware, ctrl.exportCsv);
+router.get('/:id', adminMiddleware, ctrl.getOne);
+router.patch('/:id/valider', adminMiddleware, ctrl.valider);
+router.patch('/:id/rejeter', adminMiddleware, validate(rejeterCommandeSchema), ctrl.rejeter);
+router.patch('/:id/preparation', adminMiddleware, ctrl.mettreEnPreparation);
+router.patch('/:id/expedier', adminMiddleware, ctrl.marquerExpediee);
+router.patch('/:id/livrer', adminMiddleware, ctrl.marquerLivree);
 
 module.exports = router;

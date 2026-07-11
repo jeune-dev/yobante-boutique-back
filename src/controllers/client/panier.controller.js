@@ -17,7 +17,7 @@ exports.getPanier = async (req, res) => {
       items: result.items,
       sousTotal: result.sousTotal,
       fraisLivraison: result.fraisLivraison,
-      total: result.total
+      total: result.total,
     });
   } catch (err) {
     logger.error('Erreur getPanier', { error: err.message });
@@ -41,7 +41,7 @@ exports.ajouter = async (req, res) => {
       items: result.items,
       sousTotal: result.sousTotal,
       fraisLivraison: result.fraisLivraison,
-      total: result.total
+      total: result.total,
     });
   } catch (err) {
     logger.error('Erreur ajouter panier', { error: err.message });
@@ -67,7 +67,7 @@ exports.modifier = async (req, res) => {
       items: result.items,
       sousTotal: result.sousTotal,
       fraisLivraison: result.fraisLivraison,
-      total: result.total
+      total: result.total,
     });
   } catch (err) {
     logger.error('Erreur modifier panier', { error: err.message });

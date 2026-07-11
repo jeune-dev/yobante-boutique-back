@@ -21,6 +21,7 @@ const {
   Banniere,
   Promotion,
   FraisLivraison,
+  Favori,
 } = require('./models');
 
 const PORT = process.env.PORT || 5000;
@@ -54,6 +55,7 @@ async function startServer() {
     await Banniere.sync(syncOptions);
     await Promotion.sync(syncOptions);
     await FraisLivraison.sync(syncOptions);
+    await Favori.sync(syncOptions);
 
     logger.info('Modèles synchronisés avec la base de données');
 

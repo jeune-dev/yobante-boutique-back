@@ -61,6 +61,33 @@ class PromotionClientService {
     };
   }
 
+  /** Liste plate de toutes les promotions actives (toutes sections confondues). */
+  static async getActives() {
+    const now = new Date();
+    const promotions = await Promotion.findAll({
+      where: {
+        isActive: true,
+        [Op.or]: [{ dateDebut: null }, { dateDebut: { [Op.lte]: now } }],
+        [Op.and]: [
+          {
+            [Op.or]: [{ dateFin: null }, { dateFin: { [Op.gte]: now } }],
+          },
+        ],
+      },
+      include: [
+        {
+          model: Produit,
+          as: 'produit',
+          where: { isActive: true, statutValidation: 'valide' },
+          include: [{ model: Categorie, as: 'categorie', attributes: ['id', 'nom', 'slug'] }],
+        },
+      ],
+      order: [['ordre', 'ASC']],
+    });
+
+    return { success: true, promotions };
+  }
+
   static async getSection(section) {
     const now = new Date();
     const promotions = await Promotion.findAll({

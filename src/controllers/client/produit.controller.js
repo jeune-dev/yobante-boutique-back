@@ -15,7 +15,7 @@ exports.getCatalogue = async (req, res) => {
     const result = await ProduitService.getProduits(req.query);
     return ApiResponse.success(200, res, 'Catalogue récupéré', {
       produits: result.produits,
-      pagination: result.pagination
+      pagination: result.pagination,
     });
   } catch (err) {
     logger.error('Erreur getCatalogue', { error: err.message });
@@ -35,7 +35,7 @@ exports.getOne = async (req, res) => {
     }
     return ApiResponse.success(200, res, 'Produit récupéré', {
       produit: result.produit,
-      noteMoyenne: result.noteMoyenne
+      noteMoyenne: result.noteMoyenne,
     });
   } catch (err) {
     logger.error('Erreur getOne produit', { error: err.message });
@@ -51,7 +51,7 @@ exports.getFeatured = async (req, res) => {
   try {
     const result = await ProduitService.getProduitsFeatured();
     return ApiResponse.success(200, res, 'Produits vedettes récupérés', {
-      produits: result.produits
+      produits: result.produits,
     });
   } catch (err) {
     logger.error('Erreur getFeatured', { error: err.message });
@@ -72,7 +72,7 @@ exports.getByCategorie = async (req, res) => {
     return ApiResponse.success(200, res, 'Produits de la catégorie récupérés', {
       categorie: result.categorie,
       produits: result.produits,
-      pagination: result.pagination
+      pagination: result.pagination,
     });
   } catch (err) {
     logger.error('Erreur getByCategorie', { error: err.message });
@@ -89,11 +89,11 @@ exports.rechercher = async (req, res) => {
     const result = await ProduitService.rechercherProduits({
       query: req.query.q,
       page: req.query.page,
-      limit: req.query.limit
+      limit: req.query.limit,
     });
     return ApiResponse.success(200, res, 'Recherche effectuée', {
       produits: result.produits,
-      pagination: result.pagination
+      pagination: result.pagination,
     });
   } catch (err) {
     logger.error('Erreur rechercher produits', { error: err.message });
@@ -115,7 +115,7 @@ exports.getRecommandes = async (req, res) => {
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, 'Produits recommandés récupérés', {
-      produits: result.produits
+      produits: result.produits,
     });
   } catch (err) {
     logger.error('Erreur getRecommandes', { error: err.message });

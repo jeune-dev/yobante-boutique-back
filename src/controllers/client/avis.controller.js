@@ -17,7 +17,7 @@ exports.create = async (req, res) => {
       return ApiResponse.badRequest(res, result.message);
     }
     return ApiResponse.success(201, res, result.message, {
-      avis: result.avis
+      avis: result.avis,
     });
   } catch (err) {
     logger.error('Erreur création avis', { error: err.message });
@@ -33,7 +33,7 @@ exports.getMes = async (req, res) => {
   try {
     const result = await AvisService.getMesAvis(req.user.id);
     return ApiResponse.success(200, res, 'Avis récupérés', {
-      avis: result.avis
+      avis: result.avis,
     });
   } catch (err) {
     logger.error('Erreur récupération avis', { error: err.message });
@@ -52,7 +52,7 @@ exports.update = async (req, res) => {
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, result.message, {
-      avis: result.avis
+      avis: result.avis,
     });
   } catch (err) {
     logger.error('Erreur mise à jour avis', { error: err.message });

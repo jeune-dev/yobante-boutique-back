@@ -14,9 +14,8 @@ const adresseSchema = Joi.object({
   isDefault: Joi.boolean().default(false),
 });
 
-const updateAdresseSchema = adresseSchema.fork(
-  ['nomComplet', 'telephone', 'rue', 'ville', 'pays'],
-  (schema) => schema.optional()
-).min(1);
+const updateAdresseSchema = adresseSchema
+  .fork(['nomComplet', 'telephone', 'rue', 'ville', 'pays'], (schema) => schema.optional())
+  .min(1);
 
 module.exports = { adresseSchema, updateAdresseSchema };

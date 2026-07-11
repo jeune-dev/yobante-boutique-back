@@ -10,6 +10,16 @@ exports.getSections = async (req, res) => {
   }
 };
 
+exports.getActives = async (req, res) => {
+  try {
+    const result = await PromotionClientService.getActives();
+    // Tableau renvoyé directement dans `data` (format attendu par l'app mobile).
+    return ApiResponse.success(200, res, 'Promotions actives', result.promotions);
+  } catch (err) {
+    return ApiResponse.internalServerError(res, err.message);
+  }
+};
+
 exports.getSection = async (req, res) => {
   const sections = ['nos_promos_du_moment', 'a_ne_pas_rater', 'nos_promos_a_venir'];
   if (!sections.includes(req.params.section)) {

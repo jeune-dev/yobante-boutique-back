@@ -4,11 +4,11 @@
 const router = require('express').Router();
 const ctrl = require('../../controllers/client/produit.controller');
 
-router.get('/',              ctrl.getCatalogue);
-router.get('/featured',      ctrl.getFeatured);
-router.get('/recherche',     ctrl.rechercher);
+router.get('/', ctrl.getCatalogue);
+router.get('/featured', ctrl.getFeatured);
+router.get('/recherche', ctrl.rechercher);
 router.get('/:id/recommandes', ctrl.getRecommandes);
 router.get('/categorie/:slug', ctrl.getByCategorie);
-router.get('/:slug',         ctrl.getOne);
+router.get('/:slug', ctrl.getOne);
 
 module.exports = router;

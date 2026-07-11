@@ -2,11 +2,22 @@
 // services/client/produit.service.js
 // ─────────────────────────────────────────────────────────────
 const { Op } = require('sequelize');
-const { Produit, Categorie, Avis, User } = require('../../models');
+const { Produit, Categorie, Avis, User, ProfilVendeur } = require('../../models');
 const paginate = require('../../utils/paginate');
 
-class ProduitService {
+// Include commun : catégorie + vendeur (avec sa boutique) pour enrichir les
+// produits renvoyés au client (nom boutique, localisation, contact vendeur).
+const CATALOGUE_INCLUDE = [
+  { model: Categorie, as: 'categorie' },
+  {
+    model: User,
+    as: 'vendeur',
+    attributes: ['id', 'nom', 'prenom', 'telephone'],
+    include: [{ model: ProfilVendeur, as: 'profilVendeur' }],
+  },
+];
 
+class ProduitService {
   static async getProduits({ page, limit, categorieId, prixMin, prixMax, search, tri } = {}) {
     const { page: p, limit: l, offset } = paginate(page, limit);
 
@@ -32,7 +43,7 @@ class ProduitService {
 
     const { count, rows } = await Produit.findAndCountAll({
       where,
-      include: [{ model: Categorie, as: 'categorie' }],
+      include: CATALOGUE_INCLUDE,
       order,
       limit: l,
       offset,
@@ -61,7 +72,7 @@ class ProduitService {
     });
 
     if (!produit) {
-      return { success: false, message: "Produit introuvable" };
+      return { success: false, message: 'Produit introuvable' };
     }
 
     const avisApprouves = produit.avis || [];
@@ -75,7 +86,7 @@ class ProduitService {
   static async getProduitsFeatured() {
     const produits = await Produit.findAll({
       where: { isFeatured: true, isActive: true },
-      include: [{ model: Categorie, as: 'categorie' }],
+      include: CATALOGUE_INCLUDE,
       limit: 10,
       order: [['createdAt', 'DESC']],
     });
@@ -86,7 +97,7 @@ class ProduitService {
   static async getProduitsByCategorie(slug, { page, limit } = {}) {
     const categorie = await Categorie.findOne({ where: { slug, isActive: true } });
     if (!categorie) {
-      return { success: false, message: "Catégorie introuvable" };
+      return { success: false, message: 'Catégorie introuvable' };
     }
 
     const { page: p, limit: l, offset } = paginate(page, limit);
@@ -117,6 +128,7 @@ class ProduitService {
           { description: { [Op.iLike]: `%${query}%` } },
         ],
       },
+      include: CATALOGUE_INCLUDE,
       order: [['createdAt', 'DESC']],
       limit: l,
       offset,
@@ -132,7 +144,7 @@ class ProduitService {
   static async getProduitsRecommandes(produitId, limit = 6) {
     const produit = await Produit.findByPk(produitId);
     if (!produit) {
-      return { success: false, message: "Produit introuvable" };
+      return { success: false, message: 'Produit introuvable' };
     }
 
     const produits = await Produit.findAll({

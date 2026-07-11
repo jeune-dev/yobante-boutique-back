@@ -18,6 +18,7 @@ const ProfilVendeur = require('./ProfilVendeur.model');
 const Banniere = require('./Banniere.model');
 const Promotion = require('./Promotion.model');
 const FraisLivraison = require('./FraisLivraison.model');
+const Favori = require('./Favori.model');
 
 // ── User associations ──────────────────────────────────────────
 User.hasMany(Commande, { foreignKey: 'userId', as: 'commandes', onDelete: 'CASCADE' });
@@ -83,6 +84,16 @@ UserOtp.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 // ── ProfilVendeur associations ─────────────────────────────────
 ProfilVendeur.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// ── Favori associations ────────────────────────────────────────
+User.hasMany(Favori, { foreignKey: 'userId', as: 'favoris', onDelete: 'CASCADE' });
+Favori.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+ProfilVendeur.hasMany(Favori, {
+  foreignKey: 'profilVendeurId',
+  as: 'favoris',
+  onDelete: 'CASCADE',
+});
+Favori.belongsTo(ProfilVendeur, { foreignKey: 'profilVendeurId', as: 'boutique' });
+
 // ── Banniere associations ──────────────────────────────────────
 Banniere.belongsTo(Categorie, { foreignKey: 'categorieId', as: 'categorie' });
 
@@ -107,4 +118,5 @@ module.exports = {
   Banniere,
   Promotion,
   FraisLivraison,
+  Favori,
 };

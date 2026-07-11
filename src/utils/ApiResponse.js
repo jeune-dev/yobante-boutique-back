@@ -1,6 +1,6 @@
 /**
  * Classe utilitaire pour formater les réponses API
- * 
+ *
  * Pattern uniforme: { success, message, data?, timestamp, path? }
  * Permet une gestion cohérente des erreurs et des succès
  */
@@ -17,7 +17,7 @@ class ApiResponse {
     const response = {
       success: true,
       message,
-      ...(data && { data })
+      ...(data && { data }),
     };
     return res.status(statusCode).json(response);
   }
@@ -33,7 +33,7 @@ class ApiResponse {
     const response = {
       success: false,
       message,
-      ...(errors && { errors })
+      ...(errors && { errors }),
     };
     return res.status(statusCode).json(response);
   }

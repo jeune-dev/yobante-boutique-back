@@ -11,14 +11,20 @@ const formatUser = require('../../utils/formatUser');
 
 exports.listeAdmins = async (req, res) => {
   try {
-    const result = await GestionAdminService.listerAdmins({ page: req.query.page, limit: req.query.limit });
+    const result = await GestionAdminService.listerAdmins({
+      page: req.query.page,
+      limit: req.query.limit,
+    });
     return ApiResponse.success(200, res, result.message, {
       admins: result.admins.map(formatUser),
       pagination: result.pagination,
     });
   } catch (err) {
     logger.error('Erreur dans listeAdmins :', err);
-    return ApiResponse.internalServerError(res, 'Une erreur est survenue lors de la récupération des admins');
+    return ApiResponse.internalServerError(
+      res,
+      'Une erreur est survenue lors de la récupération des admins'
+    );
   }
 };
 
@@ -26,7 +32,13 @@ exports.ajouterAdmin = async (req, res) => {
   const { nom, prenom, email, password, telephone } = req.body;
 
   try {
-    const result = await GestionAdminService.ajouterAdmin({ nom, prenom, email, password, telephone });
+    const result = await GestionAdminService.ajouterAdmin({
+      nom,
+      prenom,
+      email,
+      password,
+      telephone,
+    });
 
     if (!result.success) {
       return ApiResponse.badRequest(res, result.message);
@@ -56,14 +68,21 @@ exports.modifierAdmin = async (req, res) => {
   const { nom, prenom, telephone } = req.body;
 
   try {
-    const result = await GestionAdminService.modifierAdmin(req.params.id, { nom, prenom, telephone });
+    const result = await GestionAdminService.modifierAdmin(req.params.id, {
+      nom,
+      prenom,
+      telephone,
+    });
     if (!result.success) {
       return ApiResponse.notFound(res, result.message);
     }
     return ApiResponse.success(200, res, result.message, { admin: formatUser(result.admin) });
   } catch (err) {
     logger.error('Erreur dans modifierAdmin :', err);
-    return ApiResponse.internalServerError(res, "Erreur serveur lors de la modification de l'admin");
+    return ApiResponse.internalServerError(
+      res,
+      "Erreur serveur lors de la modification de l'admin"
+    );
   }
 };
 
@@ -76,7 +95,10 @@ exports.toggleActivationAdmin = async (req, res) => {
     return ApiResponse.success(200, res, result.message, { admin: formatUser(result.admin) });
   } catch (err) {
     logger.error('Erreur dans toggleActivationAdmin :', err);
-    return ApiResponse.internalServerError(res, "Erreur serveur lors du changement de statut de l'admin");
+    return ApiResponse.internalServerError(
+      res,
+      "Erreur serveur lors du changement de statut de l'admin"
+    );
   }
 };
 
@@ -84,14 +106,20 @@ exports.toggleActivationAdmin = async (req, res) => {
 
 exports.listeClients = async (req, res) => {
   try {
-    const result = await GestionUserService.listerClients({ page: req.query.page, limit: req.query.limit });
+    const result = await GestionUserService.listerClients({
+      page: req.query.page,
+      limit: req.query.limit,
+    });
     return ApiResponse.success(200, res, result.message, {
       clients: result.clients.map(formatUser),
       pagination: result.pagination,
     });
   } catch (err) {
     logger.error('Erreur dans listeClients :', err);
-    return ApiResponse.internalServerError(res, 'Une erreur est survenue lors de la récupération des clients');
+    return ApiResponse.internalServerError(
+      res,
+      'Une erreur est survenue lors de la récupération des clients'
+    );
   }
 };
 
@@ -101,7 +129,10 @@ exports.nombreClients = async (req, res) => {
     return ApiResponse.success(200, res, result.message, { totalClients: result.totalClients });
   } catch (err) {
     logger.error('Erreur dans nombreClients :', err);
-    return ApiResponse.internalServerError(res, 'Une erreur est survenue lors du comptage des clients');
+    return ApiResponse.internalServerError(
+      res,
+      'Une erreur est survenue lors du comptage des clients'
+    );
   }
 };
 
@@ -139,6 +170,9 @@ exports.desactiverClient = async (req, res) => {
     return ApiResponse.success(200, res, result.message, { client: formatUser(result.user) });
   } catch (err) {
     logger.error('Erreur dans desactiverClient :', err);
-    return ApiResponse.internalServerError(res, "Erreur serveur lors de la désactivation du client");
+    return ApiResponse.internalServerError(
+      res,
+      'Erreur serveur lors de la désactivation du client'
+    );
   }
 };

@@ -14,7 +14,10 @@ exports.getAll = async (req, res) => {
     });
   } catch (err) {
     logger.error('Erreur getAll commandes :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération des commandes');
+    return ApiResponse.internalServerError(
+      res,
+      'Erreur serveur lors de la récupération des commandes'
+    );
   }
 };
 
@@ -37,7 +40,10 @@ exports.getOne = async (req, res) => {
     return ApiResponse.success(200, res, 'Commande récupérée', { commande: result.commande });
   } catch (err) {
     logger.error('Erreur getOne commande :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération de la commande');
+    return ApiResponse.internalServerError(
+      res,
+      'Erreur serveur lors de la récupération de la commande'
+    );
   }
 };
 
@@ -76,7 +82,10 @@ exports.mettreEnPreparation = async (req, res) => {
 
 exports.marquerExpediee = async (req, res) => {
   try {
-    const result = await GestionCommandeService.marquerExpediee(req.params.id, req.body.trackingInfo);
+    const result = await GestionCommandeService.marquerExpediee(
+      req.params.id,
+      req.body.trackingInfo
+    );
     if (!result.success) return ApiResponse.badRequest(res, result.message);
     return ApiResponse.success(200, res, result.message, { commande: result.commande });
   } catch (err) {

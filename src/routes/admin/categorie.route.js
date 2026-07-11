@@ -6,7 +6,10 @@ const ctrl = require('../../controllers/admin/categorie.controller');
 const adminMiddleware = require('../../middlewares/admin.middleware');
 const upload = require('../../middlewares/upload.middleware');
 const validate = require('../../middlewares/validate.middleware');
-const { createCategorieSchema, updateCategorieSchema } = require('../../validations/categorie.validation');
+const {
+  createCategorieSchema,
+  updateCategorieSchema,
+} = require('../../validations/categorie.validation');
 
 const handleUpload = (req, res, next) => {
   upload.single('image')(req, res, (err) => {
@@ -18,10 +21,10 @@ const handleUpload = (req, res, next) => {
   });
 };
 
-router.get('/',      adminMiddleware, ctrl.getAll);
-router.post('/',     adminMiddleware, handleUpload, validate(createCategorieSchema), ctrl.create);
-router.get('/:id',   adminMiddleware, ctrl.getOne);
-router.put('/:id',   adminMiddleware, handleUpload, validate(updateCategorieSchema), ctrl.update);
+router.get('/', adminMiddleware, ctrl.getAll);
+router.post('/', adminMiddleware, handleUpload, validate(createCategorieSchema), ctrl.create);
+router.get('/:id', adminMiddleware, ctrl.getOne);
+router.put('/:id', adminMiddleware, handleUpload, validate(updateCategorieSchema), ctrl.update);
 router.delete('/:id', adminMiddleware, ctrl.remove);
 
 module.exports = router;

@@ -22,14 +22,14 @@ const handleUpload = (req, res, next) => {
 
 router.use(auth, checkActiveUser);
 
-router.get('/',   ctrl.get);
-router.put('/',   validate(updateProfilSchema), ctrl.update);
+router.get('/', ctrl.get);
+router.put('/', validate(updateProfilSchema), ctrl.update);
 router.put('/avatar', handleUpload, ctrl.updateAvatar);
 
-router.get('/adresses',              ctrl.getAdresses);
-router.post('/adresses',             validate(adresseSchema), ctrl.ajouterAdresse);
-router.put('/adresses/:id',          validate(updateAdresseSchema), ctrl.updateAdresse);
-router.delete('/adresses/:id',       ctrl.supprimerAdresse);
+router.get('/adresses', ctrl.getAdresses);
+router.post('/adresses', validate(adresseSchema), ctrl.ajouterAdresse);
+router.put('/adresses/:id', validate(updateAdresseSchema), ctrl.updateAdresse);
+router.delete('/adresses/:id', ctrl.supprimerAdresse);
 router.patch('/adresses/:id/default', ctrl.setDefault);
 
 module.exports = router;

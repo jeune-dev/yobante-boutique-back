@@ -10,9 +10,9 @@ const { passerCommandeSchema } = require('../../validations/commande.validation'
 
 router.use(auth, checkActiveUser);
 
-router.get('/',              ctrl.getMes);
-router.post('/',             validate(passerCommandeSchema), ctrl.passer);
-router.get('/:id',           ctrl.getOne);
+router.get('/', ctrl.getMes);
+router.post('/', validate(passerCommandeSchema), ctrl.passer);
+router.get('/:id', ctrl.getOne);
 router.patch('/:id/annuler', ctrl.annuler);
 
 module.exports = router;

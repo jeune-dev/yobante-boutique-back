@@ -1,22 +1,33 @@
 require('dotenv').config();
 
-const JWT_SECRET         = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
-const JWT_RESET_SECRET   = process.env.JWT_RESET_SECRET;
-const isProd             = process.env.NODE_ENV === 'production';
+const JWT_RESET_SECRET = process.env.JWT_RESET_SECRET;
+const isProd = process.env.NODE_ENV === 'production';
 
 // ── Validation secrets JWT ─────────────────────────────────────────────────
-const missingSecrets = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'JWT_RESET_SECRET'].filter(k => !process.env[k]);
+const missingSecrets = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'JWT_RESET_SECRET'].filter(
+  (k) => !process.env[k]
+);
 if (missingSecrets.length) {
   throw new Error(`Variables d'environnement manquantes : ${missingSecrets.join(', ')}`);
 }
 
-if (JWT_SECRET === JWT_REFRESH_SECRET || JWT_SECRET === JWT_RESET_SECRET || JWT_REFRESH_SECRET === JWT_RESET_SECRET) {
-  throw new Error('JWT_SECRET, JWT_REFRESH_SECRET et JWT_RESET_SECRET doivent tous être différents.');
+if (
+  JWT_SECRET === JWT_REFRESH_SECRET ||
+  JWT_SECRET === JWT_RESET_SECRET ||
+  JWT_REFRESH_SECRET === JWT_RESET_SECRET
+) {
+  throw new Error(
+    'JWT_SECRET, JWT_REFRESH_SECRET et JWT_RESET_SECRET doivent tous être différents.'
+  );
 }
 
 // ── Validation CORS en production ──────────────────────────────────────────
-const _rawCorsOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean);
+const _rawCorsOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 if (isProd && _rawCorsOrigins.length === 0) {
   throw new Error('En production, CORS_ORIGIN doit être défini (ex: https://votre-frontend.com)');
 }
@@ -43,14 +54,14 @@ const jwtConfig = {
   refreshSecret: JWT_REFRESH_SECRET,
   refreshExpiresIn: '7d',
   resetSecret: JWT_RESET_SECRET,
-  resetExpiresIn: '1h'
+  resetExpiresIn: '1h',
 };
 
 /**
  * Configuration Bcrypt
  */
 const bcryptConfig = {
-  saltRounds: 12
+  saltRounds: 12,
 };
 
 /**
@@ -60,7 +71,7 @@ const rateLimitConfig = {
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 };
 
 const authRateLimitConfig = {
@@ -68,7 +79,7 @@ const authRateLimitConfig = {
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Trop de tentatives. Veuillez réessayer dans 15 minutes.' }
+  message: { message: 'Trop de tentatives. Veuillez réessayer dans 15 minutes.' },
 };
 
 /**
@@ -78,7 +89,7 @@ const corsConfig = {
   origin: _rawCorsOrigins.length ? _rawCorsOrigins : ['http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
 };
 
 /**
@@ -87,7 +98,7 @@ const corsConfig = {
 const cookieConfig = {
   httpOnly: true,
   secure: isProd,
-  sameSite: 'strict'
+  sameSite: 'strict',
 };
 
 /**
@@ -95,7 +106,7 @@ const cookieConfig = {
  */
 const uploadConfig = {
   maxFileSize: 5 * 1024 * 1024, // 5 MB
-  allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp']
+  allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
 };
 
 /**
@@ -103,7 +114,7 @@ const uploadConfig = {
  */
 const cryptoConfig = {
   hashAlgorithm: 'sha256',
-  encoding: 'hex'
+  encoding: 'hex',
 };
 
 module.exports = {
@@ -114,5 +125,5 @@ module.exports = {
   corsConfig,
   cookieConfig,
   uploadConfig,
-  cryptoConfig
+  cryptoConfig,
 };

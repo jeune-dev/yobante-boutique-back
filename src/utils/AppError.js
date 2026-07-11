@@ -1,8 +1,8 @@
 /**
  * Classe d'erreur personnalisée pour l'API
- * 
+ *
  * Permet une gestion unifiée des erreurs métier
- * 
+ *
  * Utilisation:
  * throw new AppError('Email déjà utilisé', 409);
  * throw new AppError('Utilisateur non trouvé', 404);
