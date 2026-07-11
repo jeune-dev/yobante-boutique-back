@@ -1,7 +1,15 @@
 // ─────────────────────────────────────────────────────────────
 // services/admin/commande.service.js
 // ─────────────────────────────────────────────────────────────
-const { Commande, CommandeItem, Produit, User, Adresse, Paiement, sequelize } = require('../../models');
+const {
+  Commande,
+  CommandeItem,
+  Produit,
+  User,
+  Adresse,
+  Paiement,
+  sequelize,
+} = require('../../models');
 const paginate = require('../../utils/paginate');
 const { sendCommandeStatut } = require('../../utils/mailer');
 const { toCsv } = require('../../utils/csv');
@@ -14,7 +22,6 @@ const TRANSITIONS = {
 };
 
 class GestionCommandeService {
-
   static async getAllCommandes({ page, limit, statut, userId, reference } = {}) {
     const { page: p, limit: l, offset } = paginate(page, limit);
 
@@ -52,7 +59,7 @@ class GestionCommandeService {
     });
 
     if (!commande) {
-      return { success: false, message: "Commande introuvable" };
+      return { success: false, message: 'Commande introuvable' };
     }
 
     return { success: true, commande };
@@ -61,11 +68,14 @@ class GestionCommandeService {
   static async _transition(id, statutAttendu, nouveauStatut, extra = {}) {
     const commande = await Commande.findByPk(id, { include: [{ model: User, as: 'user' }] });
     if (!commande) {
-      return { success: false, message: "Commande introuvable" };
+      return { success: false, message: 'Commande introuvable' };
     }
 
     if (statutAttendu && commande.statut !== statutAttendu) {
-      return { success: false, message: `La commande doit être en statut "${statutAttendu}" pour cette action` };
+      return {
+        success: false,
+        message: `La commande doit être en statut "${statutAttendu}" pour cette action`,
+      };
     }
 
     await commande.update({ statut: nouveauStatut, ...extra });
@@ -74,30 +84,42 @@ class GestionCommandeService {
       await sendCommandeStatut(commande.user.email, commande, nouveauStatut);
     }
 
-    return { success: true, message: "Commande mise à jour avec succès", commande };
+    return { success: true, message: 'Commande mise à jour avec succès', commande };
   }
 
-  static async validerCommande(id, noteAdmin) {
-    return GestionCommandeService._transition(id, 'en_attente', 'validee', noteAdmin ? { noteAdmin } : {});
+  static validerCommande(id, noteAdmin) {
+    return GestionCommandeService._transition(
+      id,
+      'en_attente',
+      'validee',
+      noteAdmin ? { noteAdmin } : {}
+    );
   }
 
   static async rejeterCommande(id, raison) {
     const commande = await Commande.findByPk(id, {
-      include: [{ model: CommandeItem, as: 'items' }, { model: User, as: 'user' }],
+      include: [
+        { model: CommandeItem, as: 'items' },
+        { model: User, as: 'user' },
+      ],
     });
 
     if (!commande) {
-      return { success: false, message: "Commande introuvable" };
+      return { success: false, message: 'Commande introuvable' };
     }
 
     if (['livree', 'annulee'].includes(commande.statut)) {
-      return { success: false, message: "Cette commande ne peut plus être annulée" };
+      return { success: false, message: 'Cette commande ne peut plus être annulée' };
     }
 
     const t = await sequelize.transaction();
     try {
       for (const item of commande.items) {
-        await Produit.increment('stock', { by: item.quantite, where: { id: item.produitId }, transaction: t });
+        await Produit.increment('stock', {
+          by: item.quantite,
+          where: { id: item.produitId },
+          transaction: t,
+        });
       }
 
       await commande.update({ statut: 'annulee', noteAdmin: raison }, { transaction: t });
@@ -105,22 +127,27 @@ class GestionCommandeService {
 
       if (commande.user) await sendCommandeStatut(commande.user.email, commande, 'annulee');
 
-      return { success: true, message: "Commande rejetée avec succès", commande };
+      return { success: true, message: 'Commande rejetée avec succès', commande };
     } catch (err) {
       await t.rollback();
       throw err;
     }
   }
 
-  static async mettreEnPreparation(id) {
+  static mettreEnPreparation(id) {
     return GestionCommandeService._transition(id, 'validee', 'en_preparation');
   }
 
-  static async marquerExpediee(id, trackingInfo) {
-    return GestionCommandeService._transition(id, 'en_preparation', 'expediee', trackingInfo ? { noteAdmin: trackingInfo } : {});
+  static marquerExpediee(id, trackingInfo) {
+    return GestionCommandeService._transition(
+      id,
+      'en_preparation',
+      'expediee',
+      trackingInfo ? { noteAdmin: trackingInfo } : {}
+    );
   }
 
-  static async marquerLivree(id) {
+  static marquerLivree(id) {
     return GestionCommandeService._transition(id, 'expediee', 'livree');
   }
 
@@ -166,7 +193,7 @@ class GestionCommandeService {
       { key: 'client', label: 'Client' },
       { key: 'email', label: 'Email' },
       { key: 'statut', label: 'Statut' },
-      { key: 'nbArticles', label: "Nb articles" },
+      { key: 'nbArticles', label: 'Nb articles' },
       { key: 'montantTotal', label: 'Montant total' },
       { key: 'fraisLivraison', label: 'Frais livraison' },
     ]);
