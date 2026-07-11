@@ -31,9 +31,12 @@ async function startServer() {
     await sequelize.authenticate();
     logger.info('Connexion PostgreSQL établie');
 
-    // En production : force:false uniquement (jamais alter — utiliser des migrations Sequelize)
-    // En dev : alter:true pour synchroniser les changements de schéma automatiquement
-    const syncOptions = isProd ? { force: false } : { alter: true };
+    // force:false partout — crée les tables manquantes sans jamais les altérer.
+    // On n'utilise PAS alter:true : sur Postgres, Sequelize régénère à chaque boot
+    // un `ALTER COLUMN ... TYPE ... USING` invalide pour les colonnes ENUM
+    // (ex. Produit.statutValidation), ce qui fait planter tout redémarrage.
+    // L'évolution de schéma passe par les migrations Sequelize.
+    const syncOptions = { force: false };
 
     // Ordre explicite : tables parents avant enfants (FK constraints)
     await User.sync(syncOptions);
