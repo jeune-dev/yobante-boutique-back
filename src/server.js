@@ -14,8 +14,12 @@ async function startServer() {
     await sequelize.authenticate();
     logger.info('Connexion PostgreSQL établie');
 
-    await sequelize.sync({ force: false });
-    logger.info('Modèles synchronisés avec la base de données');
+    // En production les tables existent déjà — on évite sync() qui touche
+    // les index système et peut crasher sur des catalogs corrompus.
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync({ force: false });
+      logger.info('Modèles synchronisés avec la base de données');
+    }
 
     const seedAdmin = require('./seeders/adminSeeder');
     await seedAdmin();
