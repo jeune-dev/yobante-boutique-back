@@ -5,23 +5,7 @@ const logger = require('./config/logger');
 const app = require('./app');
 
 // Initialise toutes les associations Sequelize
-const {
-  User,
-  Categorie,
-  Produit,
-  Adresse,
-  Commande,
-  CommandeItem,
-  Paiement,
-  Panier,
-  Avis,
-  RefreshToken,
-  UserOtp,
-  ProfilVendeur,
-  Banniere,
-  Promotion,
-  FraisLivraison,
-} = require('./models');
+require('./models');
 
 const PORT = process.env.PORT || 5000;
 
@@ -30,25 +14,7 @@ async function startServer() {
     await sequelize.authenticate();
     logger.info('Connexion PostgreSQL établie');
 
-    // force:false — crée les tables manquantes sans jamais les altérer.
-    const syncOptions = { force: false };
-
-    await User.sync(syncOptions);
-    await Categorie.sync(syncOptions);
-    await Produit.sync(syncOptions);
-    await Adresse.sync(syncOptions);
-    await Commande.sync(syncOptions);
-    await CommandeItem.sync(syncOptions);
-    await Paiement.sync(syncOptions);
-    await Panier.sync(syncOptions);
-    await Avis.sync(syncOptions);
-    await RefreshToken.sync(syncOptions);
-    await UserOtp.sync(syncOptions);
-    await ProfilVendeur.sync(syncOptions);
-    await Banniere.sync(syncOptions);
-    await Promotion.sync(syncOptions);
-    await FraisLivraison.sync(syncOptions);
-
+    await sequelize.sync({ force: false });
     logger.info('Modèles synchronisés avec la base de données');
 
     const seedAdmin = require('./seeders/adminSeeder');
