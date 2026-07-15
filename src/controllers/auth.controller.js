@@ -7,6 +7,17 @@ const ApiResponse = require('../utils/ApiResponse');
 const formatUser = require('../utils/formatUser');
 const logger = require('../config/logger');
 
+const isProd = process.env.NODE_ENV === 'production';
+
+const REFRESH_COOKIE = 'refresh_token';
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
+  path: '/api/v1/auth',
+};
+
 /**
  * POST /api/auth/register
  * Créer un nouveau compte utilisateur
@@ -48,9 +59,11 @@ exports.login = async (req, res) => {
       return ApiResponse.badRequest(res, result.error || result.message);
     }
 
+    // Refresh token → cookie HttpOnly (inaccessible à JS)
+    res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions);
+
     return ApiResponse.success(200, res, result.message, {
       token: result.token,
-      refreshToken: result.refreshToken,
       user: formatUser(result.user),
     });
   } catch (err) {
@@ -64,22 +77,26 @@ exports.login = async (req, res) => {
  * Renouveler le token d'accès avec un refresh token
  */
 exports.refresh = async (req, res) => {
-  const { refreshToken } = req.body;
+  // Lire depuis le cookie HttpOnly (priorité) ou le body (rétrocompat temporaire)
+  const refreshToken = req.cookies?.[REFRESH_COOKIE] || req.body?.refreshToken;
 
   if (!refreshToken) {
-    return ApiResponse.badRequest(res, 'refreshToken manquant');
+    return ApiResponse.unauthorized(res, 'Session expirée. Veuillez vous reconnecter.');
   }
 
   try {
     const result = await AuthService.refresh({ refreshToken });
 
     if (!result.success) {
+      res.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
       return ApiResponse.unauthorized(res, result.error);
     }
 
+    // Rotation du refresh token → nouveau cookie HttpOnly
+    res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions);
+
     return ApiResponse.success(200, res, 'Token renouvelé', {
       token: result.token,
-      refreshToken: result.refreshToken,
     });
   } catch (err) {
     logger.error('Erreur refresh token', { error: err.message });
@@ -92,10 +109,11 @@ exports.refresh = async (req, res) => {
  * Déconnexion et revocation du refresh token
  */
 exports.logout = async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies?.[REFRESH_COOKIE] || req.body?.refreshToken;
 
   try {
     await AuthService.logout({ refreshToken });
+    res.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
     return ApiResponse.success(200, res, 'Déconnexion réussie');
   } catch (err) {
     logger.error('Erreur logout', { error: err.message });

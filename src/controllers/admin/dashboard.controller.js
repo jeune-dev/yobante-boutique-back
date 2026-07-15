@@ -9,14 +9,12 @@ exports.getStats = async (req, res) => {
   try {
     const result = await DashboardService.getStatsGlobales();
     return ApiResponse.success(200, res, 'Statistiques récupérées', {
-      stats: {
-        totalClients: result.totalClients,
-        totalVendeurs: result.totalVendeurs,
-        totalCategories: result.totalCategories,
-        totalProduits: result.totalProduits,
-        totalCommandes: result.totalCommandes,
-        chiffreAffaires: result.chiffreAffaires,
-      },
+      totalClients: result.totalClients,
+      totalVendeurs: result.totalVendeurs,
+      totalCategories: result.totalCategories,
+      totalProduits: result.totalProduits,
+      totalCommandes: result.totalCommandes,
+      chiffreAffaires: result.chiffreAffaires,
     });
   } catch (err) {
     logger.error('Erreur getStats dashboard :', err);
@@ -24,6 +22,33 @@ exports.getStats = async (req, res) => {
       res,
       'Erreur serveur lors de la récupération des statistiques'
     );
+  }
+};
+
+exports.getOverview = async (req, res) => {
+  try {
+    const [stats, kpiResult, topProduitsResult, clientsActifsResult] = await Promise.all([
+      DashboardService.getStatsGlobales(),
+      DashboardService.getKpiStocks(),
+      DashboardService.getProduitsPlusVendus(5),
+      DashboardService.getClientsActifs(5),
+    ]);
+    return ApiResponse.success(200, res, "Vue d'ensemble récupérée", {
+      totalClients: stats.totalClients,
+      totalVendeurs: stats.totalVendeurs,
+      totalCategories: stats.totalCategories,
+      totalProduits: stats.totalProduits,
+      totalCommandes: stats.totalCommandes,
+      chiffreAffaires: stats.chiffreAffaires,
+      produitsEnAttente: kpiResult.kpi.produitsEnAttente,
+      produitsEnRupture: kpiResult.kpi.produitsEnRupture,
+      stockFaible: kpiResult.kpi.stockFaible,
+      topProduits: topProduitsResult.produits,
+      clientsActifs: clientsActifsResult.clients,
+    });
+  } catch (err) {
+    logger.error('Erreur getOverview dashboard :', err);
+    return ApiResponse.internalServerError(res, 'Erreur serveur');
   }
 };
 
