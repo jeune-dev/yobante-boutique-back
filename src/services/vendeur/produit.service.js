@@ -5,6 +5,32 @@ const paginate = require('../../utils/paginate');
 const { uploadImage, deleteImage } = require('../upload.service');
 const { STATUT_VALIDATION_PRODUIT } = require('../../constants');
 
+/**
+ * Champs qu'un vendeur est autorisé à renseigner lui-même.
+ *
+ * Liste blanche explicite : recopier le corps de requête tel quel laisserait
+ * un vendeur positionner `isFeatured`, `noteMoyenne`, `prixPromo` ou `stock`,
+ * qui relèvent tous de l'administration. Le vendeur demande un `stockAlloue` ;
+ * c'est l'admin qui décide du `stock` réellement ouvert à la vente.
+ */
+const CHAMPS_VENDEUR = [
+  'nom',
+  'description',
+  'prix',
+  'stockAlloue',
+  'categorieId',
+  'poids',
+  'infoLegale',
+  'messageVendeur',
+];
+
+const filtrerChampsVendeur = (data = {}) =>
+  Object.fromEntries(
+    Object.entries(data).filter(
+      ([cle, valeur]) => CHAMPS_VENDEUR.includes(cle) && valeur !== undefined
+    )
+  );
+
 class VendeurProduitService {
   static async soumettreProduit(vendeurId, data, files = []) {
     const categorie = await Categorie.findByPk(data.categorieId);
@@ -12,11 +38,12 @@ class VendeurProduitService {
 
     const slug = await generateUniqueSlug(Produit, data.nom);
     const payload = {
-      ...data,
+      ...filtrerChampsVendeur(data),
       slug,
       vendeurId,
       statutValidation: STATUT_VALIDATION_PRODUIT.EN_ATTENTE,
       isActive: false,
+      motifRejet: null,
     };
 
     if (files && files.length) {
@@ -67,10 +94,13 @@ class VendeurProduitService {
     const produit = await Produit.findOne({ where: { id, vendeurId } });
     if (!produit) return { success: false, message: 'Produit introuvable ou non autorisé' };
 
+    // Toute modification repart en validation : on efface le motif de rejet
+    // précédent, qui ne concerne plus la version soumise.
     const updates = {
-      ...data,
+      ...filtrerChampsVendeur(data),
       statutValidation: STATUT_VALIDATION_PRODUIT.EN_ATTENTE,
       isActive: false,
+      motifRejet: null,
     };
 
     if (data.nom && data.nom !== produit.nom) {

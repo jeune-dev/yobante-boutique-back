@@ -55,6 +55,16 @@ const Produit = sequelize.define(
       type: DataTypes.ENUM('en_attente', 'valide_step1', 'valide', 'rejete'),
       defaultValue: 'valide',
     },
+    messageVendeur: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Message libre du vendeur à l'attention de qui relit sa demande",
+    },
+    motifRejet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Motif du rejet, restitué au vendeur dans le suivi de sa demande',
+    },
     vendeurId: {
       type: DataTypes.UUID,
       allowNull: true,

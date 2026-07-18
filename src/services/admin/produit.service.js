@@ -183,8 +183,15 @@ class GestionProduitService {
   }
 
   static async rejeterProduit(id, motif) {
+    // Le motif est persisté : c'est ce que le vendeur lit dans le suivi de sa
+    // demande. Auparavant il n'apparaissait que dans la réponse HTTP à l'admin
+    // et était donc perdu.
     const [nbRows] = await Produit.update(
-      { statutValidation: STATUT_VALIDATION_PRODUIT.REJETE, isActive: false },
+      {
+        statutValidation: STATUT_VALIDATION_PRODUIT.REJETE,
+        isActive: false,
+        motifRejet: motif || null,
+      },
       { where: { id } }
     );
     if (nbRows === 0) return { success: false, message: 'Produit introuvable' };
