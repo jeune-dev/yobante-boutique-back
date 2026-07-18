@@ -95,6 +95,14 @@ const Produit = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    rayonId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    sousRayonId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

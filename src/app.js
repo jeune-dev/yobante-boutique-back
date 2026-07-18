@@ -59,6 +59,7 @@ app.use('/api/v1/promotions', require('./routes/client/promotion.route'));
 app.use('/api/v1/frais-livraisons', require('./routes/client/frais-livraison.route'));
 app.use('/api/v1/favoris', require('./routes/client/favori.route'));
 app.use('/api/v1/boutiques', require('./routes/client/boutique.route'));
+app.use('/api/v1/rayons', require('./routes/client/rayon.route'));
 
 // Évite la boucle /api/v1/v1/…
 app.use('/api', (req, res, next) => {

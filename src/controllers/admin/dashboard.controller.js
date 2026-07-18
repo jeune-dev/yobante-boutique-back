@@ -91,3 +91,8 @@ exports.getStatsVendeurs = asyncHandler(async (req, res) => {
   const result = await DashboardService.getStatsVendeurs();
   return ok(res, { stats: result.stats }, 'Stats vendeurs');
 });
+
+exports.getKpiComplet = asyncHandler(async (req, res) => {
+  const result = await DashboardService.getKpiComplet();
+  return ok(res, result, 'KPI complet');
+});

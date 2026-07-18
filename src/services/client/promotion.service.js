@@ -2,7 +2,7 @@
 // services/client/promotion.service.js
 // ─────────────────────────────────────────────────────────────
 const { Op } = require('sequelize');
-const { Promotion, Produit, Categorie, BlocPromo } = require('../../models');
+const { Promotion, Produit, Categorie, Rayon, SousRayon } = require('../../models');
 
 class PromotionClientService {
   /** Retourne les 3 sections promotionnelles pour la page Promotions de l'app */
@@ -88,13 +88,29 @@ class PromotionClientService {
     return { success: true, promotions };
   }
 
-  /** Métadonnées (image, titre) des blocs promo actifs — pour l'app mobile. */
-  static async getBlocs() {
-    const blocs = await BlocPromo.findAll({
-      where: { isActive: true },
-      order: [['ordre', 'ASC']],
-    });
-    return { success: true, blocs };
+  static async getPromotionsGroupees() {
+    const sections = ['nos_promos_du_moment', 'a_ne_pas_rater', 'nos_promos_a_venir'];
+    const result = {};
+    for (const section of sections) {
+      const promos = await Promotion.findAll({
+        where: { section, isActive: true },
+        include: [
+          {
+            model: Produit,
+            as: 'produit',
+            required: true,
+            where: { isActive: true, statutValidation: 'valide' },
+            include: [
+              { model: Rayon, as: 'rayon', attributes: ['id', 'nom'] },
+              { model: SousRayon, as: 'sousRayon', attributes: ['id', 'nom'] },
+            ],
+          },
+        ],
+        order: [['ordre', 'ASC']],
+      });
+      result[section] = promos;
+    }
+    return { success: true, promotions: result };
   }
 
   static async getSection(section) {

@@ -1,5 +1,22 @@
 const { Op } = require('sequelize');
 const { Produit, Categorie, User } = require('../../models');
+
+async function _sendProduitEmail(vendeurId, sujet, html) {
+  try {
+    const vendeur = await User.findByPk(vendeurId, { attributes: ['email'] });
+    if (!vendeur) return;
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from: process.env.RESEND_FROM || 'Yobante Boutique <noreply@yobante.com>',
+      to: vendeur.email,
+      subject: sujet,
+      html,
+    });
+  } catch (err) {
+    require('../config/logger').error('[Produit] Email non envoyé', { error: err.message });
+  }
+}
 const { generateUniqueSlug } = require('../../utils/slugify');
 const paginate = require('../../utils/paginate');
 const { uploadImage, deleteImage } = require('../upload.service');
@@ -73,6 +90,7 @@ class GestionProduitService {
     page,
     limit,
     categorieId,
+    rayonId,
     isActive,
     isFeatured,
     prixMin,
@@ -83,6 +101,7 @@ class GestionProduitService {
 
     const where = {};
     if (categorieId) where.categorieId = categorieId;
+    if (rayonId) where.rayonId = rayonId;
     if (isActive !== undefined) where.isActive = isActive === 'true' || isActive === true;
     if (isFeatured !== undefined) where.isFeatured = isFeatured === 'true' || isFeatured === true;
     if (prixMin || prixMax) {
@@ -180,15 +199,23 @@ class GestionProduitService {
     }
 
     const produit = await Produit.findByPk(id);
+    // Email et notification sont complémentaires : le mail laisse une trace
+    // hors application, la notification alimente la cloche et le push.
+    if (produit && produit.vendeurId) {
+      await _sendProduitEmail(
+        produit.vendeurId,
+        `Votre produit "${produit.nom}" a été validé`,
+        `<div style="font-family:sans-serif"><p>Bonjour,</p><p>Votre produit <strong>${produit.nom}</strong> a été validé et est maintenant disponible sur Yobante Boutique.</p><p>Merci pour votre confiance !</p></div>`
+      );
 
-    await NotificationService.emettre({
-      userId: produit.vendeurId,
-      titre: 'Demande acceptée',
-      message: `« ${produit.nom} » est publié sur le catalogue.`,
-      type: 'produit',
-      donnees: { produitId: produit.id },
-    });
-
+      await NotificationService.emettre({
+        userId: produit.vendeurId,
+        titre: 'Demande acceptée',
+        message: `« ${produit.nom} » est publié sur le catalogue.`,
+        type: 'produit',
+        donnees: { produitId: produit.id },
+      });
+    }
     return { success: true, message: 'Produit validé et publié sur le catalogue', produit };
   }
 
@@ -206,15 +233,21 @@ class GestionProduitService {
     );
     if (nbRows === 0) return { success: false, message: 'Produit introuvable' };
     const produit = await Produit.findByPk(id);
+    if (produit && produit.vendeurId) {
+      await _sendProduitEmail(
+        produit.vendeurId,
+        `Votre produit "${produit.nom}" n'a pas été validé`,
+        `<div style="font-family:sans-serif"><p>Bonjour,</p><p>Votre produit <strong>${produit.nom}</strong> n'a pas été validé.${motif ? ` Motif : ${motif}.` : ''}</p><p>Veuillez contacter l'équipe Yobante pour plus d'informations.</p></div>`
+      );
 
-    await NotificationService.emettre({
-      userId: produit.vendeurId,
-      titre: 'Demande rejetée',
-      message: motif ? `« ${produit.nom} » : ${motif}` : `« ${produit.nom} » n’a pas été retenu.`,
-      type: 'produit',
-      donnees: { produitId: produit.id },
-    });
-
+      await NotificationService.emettre({
+        userId: produit.vendeurId,
+        titre: 'Demande rejetée',
+        message: motif ? `« ${produit.nom} » : ${motif}` : `« ${produit.nom} » n’a pas été retenu.`,
+        type: 'produit',
+        donnees: { produitId: produit.id },
+      });
+    }
     return { success: true, message: `Produit rejeté${motif ? ` : ${motif}` : ''}`, produit };
   }
 

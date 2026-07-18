@@ -143,7 +143,13 @@ class AuthService {
       throw err;
     }
 
-    return { success: true, token: accessToken, refreshToken, user };
+    return {
+      success: true,
+      token: accessToken,
+      refreshToken,
+      user,
+      mustChangePassword: user.mustChangePassword,
+    };
   }
 
   // -------------------- REFRESH TOKEN --------------------
@@ -279,6 +285,33 @@ class AuthService {
       await t.rollback();
       throw err;
     }
+  }
+
+  // -------------------- PREMIER LOGIN (CHANGE PASSWORD) --------------------
+  static async changerPremierMotDePasse(
+    userId,
+    { ancienPassword, nouveauPassword, confirmPassword }
+  ) {
+    if (nouveauPassword !== confirmPassword)
+      return { success: false, message: 'Les mots de passe ne correspondent pas' };
+    if (nouveauPassword.length < 6)
+      return { success: false, message: 'Le mot de passe doit contenir au moins 6 caractères' };
+
+    const user = await User.findByPk(userId);
+    if (!user) return { success: false, message: 'Utilisateur introuvable' };
+    if (!user.mustChangePassword)
+      return {
+        success: false,
+        message: 'Ce compte ne nécessite pas de changement de mot de passe',
+      };
+
+    const valid = await bcrypt.compare(ancienPassword, user.password);
+    if (!valid) return { success: false, message: 'Ancien mot de passe incorrect' };
+
+    const hashedPassword = await bcrypt.hash(nouveauPassword, bcryptConfig.saltRounds);
+    await user.update({ password: hashedPassword, mustChangePassword: false });
+
+    return { success: true, message: 'Mot de passe changé avec succès' };
   }
 
   // -------------------- CHANGER MOT DE PASSE --------------------

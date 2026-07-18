@@ -161,6 +161,21 @@ class GestionCommandeService {
     return { success: true, commandes };
   }
 
+  static async getKpiCommandes() {
+    const [total, enAttente, validees, annulees, livrees, ca] = await Promise.all([
+      Commande.count(),
+      Commande.count({ where: { statut: 'en_attente' } }),
+      Commande.count({ where: { statut: 'validee' } }),
+      Commande.count({ where: { statut: 'annulee' } }),
+      Commande.count({ where: { statut: 'livree' } }),
+      Commande.sum('montantTotal', { where: { statut: 'livree' } }),
+    ]);
+    return {
+      success: true,
+      kpi: { total, enAttente, validees, annulees, livrees, chiffreAffaires: ca || 0 },
+    };
+  }
+
   static async exportCommandes({ statut, userId, reference } = {}) {
     const where = {};
     if (statut) where.statut = statut;

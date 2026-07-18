@@ -30,5 +30,6 @@ router.post(
 );
 router.post('/reset-password', authLimiter, validate(resetPasswordSchema), ctrl.resetPassword);
 router.put('/change-password', auth, validate(changePasswordSchema), ctrl.changePassword);
+router.post('/changer-premier-mdp', auth, ctrl.changerPremierMotDePasse);
 
 module.exports = router;

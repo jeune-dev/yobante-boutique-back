@@ -50,6 +50,10 @@ const User = sequelize.define(
       type: DataTypes.STRING(500),
       allowNull: true,
     },
+    mustChangePassword: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

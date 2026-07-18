@@ -6,6 +6,7 @@ const {
   CommandeItem,
   ProfilVendeur,
   Categorie,
+  Rayon,
   sequelize,
 } = require('../../models');
 const { ROLES } = require('../../constants');
@@ -22,7 +23,7 @@ class DashboardService {
     ] = await Promise.all([
       User.count({ where: { role: ROLES.CLIENT } }),
       User.count({ where: { role: ROLES.VENDEUR } }),
-      Categorie.count({ where: { isActive: true } }),
+      Rayon.count({ where: { isActive: true } }),
       Produit.count({ where: { isActive: true } }),
       Commande.count(),
       Commande.sum('montantTotal', { where: { statut: 'livree' } }),
@@ -228,6 +229,71 @@ class DashboardService {
     return {
       success: true,
       stats: { totalVendeurs, vendeursActifs, enAttenteValidation, produitsSoumis },
+    };
+  }
+
+  static async getKpiComplet() {
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - 7);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      stats,
+      commandesParStatut,
+      revenusParMois,
+      produitsPlusVendus,
+      clientsActifs,
+      commandesRecentes,
+      kpiStocks,
+      statsVendeurs,
+      caJour,
+      caSemaine,
+      caMois,
+      commandesEnAttente,
+      promotionsActives,
+    ] = await Promise.all([
+      DashboardService.getStatsGlobales(),
+      DashboardService.getCommandesParStatut(),
+      DashboardService.getRevenusParMois(),
+      DashboardService.getProduitsPlusVendus(10),
+      DashboardService.getClientsActifs(5),
+      DashboardService.getCommandesRecentes(10),
+      DashboardService.getKpiStocks(),
+      DashboardService.getStatsVendeurs(),
+      Commande.sum('montantTotal', {
+        where: { statut: 'livree', createdAt: { [Op.gte]: startOfDay } },
+      }),
+      Commande.sum('montantTotal', {
+        where: { statut: 'livree', createdAt: { [Op.gte]: startOfWeek } },
+      }),
+      Commande.sum('montantTotal', {
+        where: { statut: 'livree', createdAt: { [Op.gte]: startOfMonth } },
+      }),
+      Commande.count({ where: { statut: 'en_attente' } }),
+      require('../../models').Promotion.count({ where: { isActive: true } }),
+    ]);
+
+    return {
+      success: true,
+      kpi: {
+        ...stats,
+        caJour: caJour || 0,
+        caSemaine: caSemaine || 0,
+        caMois: caMois || 0,
+        commandesEnAttente,
+        promotionsActives,
+      },
+      commandesParStatut: commandesParStatut.stats,
+      revenusParMois: revenusParMois.revenus,
+      produitsPlusVendus: produitsPlusVendus.produits,
+      clientsActifs: clientsActifs.clients,
+      commandesRecentes: commandesRecentes.commandes,
+      kpiStocks: kpiStocks.kpi,
+      produitsRupture: kpiStocks.produitsRupture,
+      statsVendeurs: statsVendeurs.stats,
     };
   }
 }
