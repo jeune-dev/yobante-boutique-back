@@ -34,6 +34,22 @@ const Paiement = sequelize.define(
     transactionId: {
       type: DataTypes.STRING(100),
       allowNull: true,
+      comment: 'Référence de la transaction chez le fournisseur',
+    },
+    fournisseur: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'Fournisseur ayant traité le paiement (simulation, wave…)',
+    },
+    urlPaiement: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'URL à ouvrir pour finaliser le paiement, le cas échéant',
+    },
+    derniereErreur: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Motif du dernier échec, affiché au client pour réessayer',
     },
     payeAt: {
       type: DataTypes.DATE,
