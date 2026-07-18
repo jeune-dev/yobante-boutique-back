@@ -22,12 +22,21 @@ async function pousser({ userId, titre, message, donnees = {} }) {
     });
     if (!appareils.length) return { envoyes: 0, ignores: 0, raison: 'aucun_appareil' };
 
-    return await fournisseur.envoyer({
+    const resultat = await fournisseur.envoyer({
       tokens: appareils.map((a) => a.token),
       titre,
       message,
       donnees,
     });
+
+    // Purge des jetons refusés (application désinstallée) : les garder ferait
+    // échouer tous les envois suivants pour cet utilisateur.
+    if (resultat.invalides?.length) {
+      await DeviceToken.destroy({ where: { token: resultat.invalides } });
+      logger.info('Jetons push obsolètes supprimés', { total: resultat.invalides.length });
+    }
+
+    return resultat;
   } catch (err) {
     logger.error("Échec de l'envoi push", { error: err.message, userId, titre });
     return { envoyes: 0, ignores: 0, raison: 'erreur' };

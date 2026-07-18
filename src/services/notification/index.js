@@ -14,7 +14,14 @@ const { pousser } = require('./push');
 class NotificationService {
   static async creer({ userId, titre, message, type, donnees = {} }) {
     const notification = await Notification.create({ userId, titre, message, type, donnees });
-    await pousser({ userId, titre, message, donnees: { ...donnees, type } });
+    // `notificationId` permet à l'application de marquer la notification comme
+    // lue quand l'utilisateur la touche depuis le bandeau système.
+    await pousser({
+      userId,
+      titre,
+      message,
+      donnees: { ...donnees, type, notificationId: notification.id },
+    });
     return notification;
   }
 
