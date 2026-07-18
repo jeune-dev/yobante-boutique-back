@@ -11,5 +11,6 @@ router.get('/:id', ctrl.getById);
 router.put('/:id', ctrl.update);
 router.delete('/:id', ctrl.remove);
 router.patch('/:id/toggle', ctrl.toggleActive);
+router.post('/produit/:produitId', ctrl.creer);
 
 module.exports = router;

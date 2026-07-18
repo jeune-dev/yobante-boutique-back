@@ -1,5 +1,22 @@
 const { Op } = require('sequelize');
 const { Produit, Categorie, User } = require('../../models');
+
+async function _sendProduitEmail(vendeurId, sujet, html) {
+  try {
+    const vendeur = await User.findByPk(vendeurId, { attributes: ['email'] });
+    if (!vendeur) return;
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from: process.env.RESEND_FROM || 'Yobante Boutique <noreply@yobante.com>',
+      to: vendeur.email,
+      subject: sujet,
+      html,
+    });
+  } catch (err) {
+    require('../config/logger').error('[Produit] Email non envoyé', { error: err.message });
+  }
+}
 const { generateUniqueSlug } = require('../../utils/slugify');
 const paginate = require('../../utils/paginate');
 const { uploadImage, deleteImage } = require('../upload.service');
@@ -179,6 +196,13 @@ class GestionProduitService {
     }
 
     const produit = await Produit.findByPk(id);
+    if (produit && produit.vendeurId) {
+      await _sendProduitEmail(
+        produit.vendeurId,
+        `Votre produit "${produit.nom}" a été validé`,
+        `<div style="font-family:sans-serif"><p>Bonjour,</p><p>Votre produit <strong>${produit.nom}</strong> a été validé et est maintenant disponible sur Yobante Boutique.</p><p>Merci pour votre confiance !</p></div>`
+      );
+    }
     return { success: true, message: 'Produit validé et publié sur le catalogue', produit };
   }
 
@@ -189,6 +213,13 @@ class GestionProduitService {
     );
     if (nbRows === 0) return { success: false, message: 'Produit introuvable' };
     const produit = await Produit.findByPk(id);
+    if (produit && produit.vendeurId) {
+      await _sendProduitEmail(
+        produit.vendeurId,
+        `Votre produit "${produit.nom}" n'a pas été validé`,
+        `<div style="font-family:sans-serif"><p>Bonjour,</p><p>Votre produit <strong>${produit.nom}</strong> n'a pas été validé.${motif ? ` Motif : ${motif}.` : ''}</p><p>Veuillez contacter l'équipe Yobante pour plus d'informations.</p></div>`
+      );
+    }
     return { success: true, message: `Produit rejeté${motif ? ` : ${motif}` : ''}`, produit };
   }
 

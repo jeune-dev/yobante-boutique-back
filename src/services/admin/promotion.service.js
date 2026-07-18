@@ -101,6 +101,38 @@ class PromotionService {
     return { success: true, promotion: promo };
   }
 
+  static async creerPromotion(
+    produitId,
+    { section, pourcentageReduction, dateDebut, dateFin, titre }
+  ) {
+    const produit = await Produit.findByPk(produitId);
+    if (!produit) return { success: false, message: 'Produit introuvable' };
+
+    const prixPromo = parseFloat((produit.prix * (1 - pourcentageReduction / 100)).toFixed(2));
+    const now = new Date();
+    const debut = new Date(dateDebut);
+    const isActive = debut <= now;
+
+    // Désactiver les anciennes promos du même produit pour la même section
+    await Promotion.update({ isActive: false }, { where: { produitId, section, isActive: true } });
+
+    const promo = await Promotion.create({
+      produitId,
+      section,
+      titre: titre || `Promo ${section}`,
+      prixPromo,
+      pourcentageReduction,
+      dateDebut: debut,
+      dateFin: new Date(dateFin),
+      isActive,
+    });
+
+    // Mettre à jour le prixPromo du produit si la promo est active maintenant
+    if (isActive) await produit.update({ prixPromo });
+
+    return { success: true, message: 'Promotion créée', promo };
+  }
+
   /** Retourne les promotions regroupées par section (pour le dashboard admin) */
   static async getParSection() {
     const now = new Date();

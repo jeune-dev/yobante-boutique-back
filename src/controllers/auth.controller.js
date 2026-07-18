@@ -50,7 +50,15 @@ exports.login = asyncHandler(async (req, res) => {
   // Refresh token → cookie HttpOnly (inaccessible à JS)
   res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions);
 
-  return ok(res, { token: result.token, user: formatUser(result.user) }, result.message);
+  return ok(
+    res,
+    {
+      token: result.token,
+      user: formatUser(result.user),
+      mustChangePassword: result.mustChangePassword,
+    },
+    result.message
+  );
 });
 
 /**
@@ -124,5 +132,15 @@ exports.changePassword = asyncHandler(async (req, res) => {
 
   if (!result.success) throw new BadRequestError(result.message);
 
+  return ok(res, {}, result.message);
+});
+
+/**
+ * POST /api/auth/changer-premier-mdp (protégé)
+ * Changer le mot de passe temporaire lors du premier login
+ */
+exports.changerPremierMotDePasse = asyncHandler(async (req, res) => {
+  const result = await AuthService.changerPremierMotDePasse(req.user.id, req.body);
+  if (!result.success) throw new BadRequestError(result.message);
   return ok(res, {}, result.message);
 });

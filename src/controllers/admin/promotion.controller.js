@@ -45,3 +45,9 @@ exports.getParSection = asyncHandler(async (req, res) => {
   const result = await PromotionService.getParSection();
   return ok(res, { sections: result.sections }, 'Promotions par section');
 });
+
+exports.creer = asyncHandler(async (req, res) => {
+  const result = await PromotionService.creerPromotion(req.params.produitId, req.body);
+  if (!result.success) throw new BadRequestError(result.message);
+  return created(res, { promo: result.promo }, result.message);
+});

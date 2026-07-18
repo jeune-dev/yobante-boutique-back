@@ -11,5 +11,7 @@ router.put('/:id', upload.single('image'), ctrl.update);
 router.delete('/:id', ctrl.remove);
 router.patch('/:id/toggle', ctrl.toggleActive);
 router.post('/reordonner', ctrl.reordonner);
+router.post('/:id/produits', ctrl.ajouterProduit);
+router.delete('/:id/produits/:produitId', ctrl.retirerProduit);
 
 module.exports = router;

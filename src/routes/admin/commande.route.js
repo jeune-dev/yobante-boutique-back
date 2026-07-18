@@ -7,6 +7,7 @@ const adminMiddleware = require('../../middlewares/admin.middleware');
 const validate = require('../../middlewares/validate.middleware');
 const { rejeterCommandeSchema } = require('../../validations/commande.validation');
 
+router.get('/kpi', adminMiddleware, ctrl.getKpi);
 router.get('/', adminMiddleware, ctrl.getAll);
 router.get('/export', adminMiddleware, ctrl.exportCsv);
 router.get('/:id', adminMiddleware, ctrl.getOne);

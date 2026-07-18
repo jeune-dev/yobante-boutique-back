@@ -36,3 +36,15 @@ exports.reordonner = asyncHandler(async (req, res) => {
   const result = await BanniereService.reordonner(req.body.ordres);
   return ok(res, {}, result.message);
 });
+
+exports.ajouterProduit = asyncHandler(async (req, res) => {
+  const result = await BanniereService.ajouterProduit(req.params.id, req.body);
+  if (!result.success) throw new BadRequestError(result.message);
+  return created(res, { item: result.item }, result.message);
+});
+
+exports.retirerProduit = asyncHandler(async (req, res) => {
+  const result = await BanniereService.retirerProduit(req.params.id, req.params.produitId);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, {}, result.message);
+});

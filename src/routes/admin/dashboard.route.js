@@ -15,5 +15,6 @@ router.get('/commandes-recentes', adminMiddleware, ctrl.getCommandesRecentes);
 router.get('/stock-alertes', adminMiddleware, ctrl.getStockAlertes);
 router.get('/kpi-stocks', adminMiddleware, ctrl.getKpiStocks);
 router.get('/stats-vendeurs', adminMiddleware, ctrl.getStatsVendeurs);
+router.get('/kpi-complet', adminMiddleware, ctrl.getKpiComplet);
 
 module.exports = router;

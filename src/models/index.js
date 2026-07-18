@@ -19,7 +19,9 @@ const Banniere = require('./Banniere.model');
 const Promotion = require('./Promotion.model');
 const FraisLivraison = require('./FraisLivraison.model');
 const Favori = require('./Favori.model');
-const BlocPromo = require('./BlocPromo.model');
+const Rayon = require('./Rayon.model');
+const SousRayon = require('./SousRayon.model');
+const BanniereProduit = require('./BanniereProduit.model');
 
 // ── User associations ──────────────────────────────────────────
 User.hasMany(Commande, { foreignKey: 'userId', as: 'commandes', onDelete: 'CASCADE' });
@@ -101,6 +103,26 @@ Banniere.belongsTo(Categorie, { foreignKey: 'categorieId', as: 'categorie' });
 // ── Promotion associations ─────────────────────────────────────
 Promotion.belongsTo(Produit, { foreignKey: 'produitId', as: 'produit' });
 
+// ── Rayon / SousRayon associations ─────────────────────────────
+Rayon.hasMany(SousRayon, { foreignKey: 'rayonId', as: 'sousRayons' });
+SousRayon.belongsTo(Rayon, { foreignKey: 'rayonId', as: 'rayon' });
+Rayon.hasMany(Produit, { foreignKey: 'rayonId', as: 'produits' });
+Produit.belongsTo(Rayon, { foreignKey: 'rayonId', as: 'rayon' });
+SousRayon.hasMany(Produit, { foreignKey: 'sousRayonId', as: 'produits' });
+Produit.belongsTo(SousRayon, { foreignKey: 'sousRayonId', as: 'sousRayon' });
+
+// ── Bannière <-> Produit associations ──────────────────────────
+Banniere.belongsToMany(Produit, {
+  through: BanniereProduit,
+  foreignKey: 'banniereId',
+  as: 'produits',
+});
+Produit.belongsToMany(Banniere, {
+  through: BanniereProduit,
+  foreignKey: 'produitId',
+  as: 'bannieres',
+});
+
 // ── Export all models ──────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -120,5 +142,7 @@ module.exports = {
   Promotion,
   FraisLivraison,
   Favori,
-  BlocPromo,
+  Rayon,
+  SousRayon,
+  BanniereProduit,
 };

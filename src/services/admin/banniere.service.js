@@ -1,13 +1,21 @@
 // ─────────────────────────────────────────────────────────────
 // services/admin/banniere.service.js
 // ─────────────────────────────────────────────────────────────
-const { Banniere, Categorie } = require('../../models');
+const { Banniere, Categorie, Produit, BanniereProduit } = require('../../models');
 const { uploadImage, deleteImage } = require('../upload.service');
 
 class BanniereService {
   static async getAll() {
     const bannieres = await Banniere.findAll({
-      include: [{ model: Categorie, as: 'categorie', attributes: ['id', 'nom', 'slug'] }],
+      include: [
+        { model: Categorie, as: 'categorie', attributes: ['id', 'nom', 'slug'] },
+        {
+          model: Produit,
+          as: 'produits',
+          through: { attributes: ['ordre'] },
+          attributes: ['id', 'nom', 'slug', 'prix', 'prixPromo', 'images'],
+        },
+      ],
       order: [
         ['ordre', 'ASC'],
         ['createdAt', 'DESC'],
@@ -60,6 +68,23 @@ class BanniereService {
     // ordres = [{ id, ordre }, ...]
     await Promise.all(ordres.map(({ id, ordre }) => Banniere.update({ ordre }, { where: { id } })));
     return { success: true, message: 'Ordre mis à jour' };
+  }
+
+  static async ajouterProduit(banniereId, { produitId, ordre = 0 }) {
+    const banniere = await Banniere.findByPk(banniereId);
+    if (!banniere) return { success: false, message: 'Bannière introuvable' };
+    const produit = await Produit.findByPk(produitId);
+    if (!produit) return { success: false, message: 'Produit introuvable' };
+    const exist = await BanniereProduit.findOne({ where: { banniereId, produitId } });
+    if (exist) return { success: false, message: 'Produit déjà associé à cette bannière' };
+    const item = await BanniereProduit.create({ banniereId, produitId, ordre });
+    return { success: true, message: 'Produit ajouté à la bannière', item };
+  }
+
+  static async retirerProduit(banniereId, produitId) {
+    const deleted = await BanniereProduit.destroy({ where: { banniereId, produitId } });
+    if (!deleted) return { success: false, message: 'Association introuvable' };
+    return { success: true, message: 'Produit retiré de la bannière' };
   }
 }
 

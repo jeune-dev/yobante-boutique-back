@@ -6,6 +6,20 @@ const { ROLES } = require('../../constants');
 const paginate = require('../../utils/paginate');
 
 class GestionVendeurService {
+  static _generatePassword(length = 7) {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const all = upper + lower + digits;
+    let pwd = upper[Math.floor(Math.random() * upper.length)];
+    pwd += digits[Math.floor(Math.random() * digits.length)];
+    for (let i = 2; i < length; i++) pwd += all[Math.floor(Math.random() * all.length)];
+    return pwd
+      .split('')
+      .sort(() => Math.random() - 0.5)
+      .join('');
+  }
+
   static async creerVendeur(data, adminId) {
     const t = await sequelize.transaction();
     try {
@@ -16,7 +30,8 @@ class GestionVendeurService {
         return { success: false, message: 'Cet email est déjà utilisé' };
       }
 
-      const hashedPassword = await bcrypt.hash(data.password, bcryptConfig.saltRounds);
+      const plainPassword = GestionVendeurService._generatePassword();
+      const hashedPassword = await bcrypt.hash(plainPassword, bcryptConfig.saltRounds);
 
       const user = await User.create(
         {
@@ -28,6 +43,7 @@ class GestionVendeurService {
           role: ROLES.VENDEUR,
           isVerified: true,
           isActive: false,
+          mustChangePassword: true,
         },
         { transaction: t }
       );
@@ -45,7 +61,37 @@ class GestionVendeurService {
       );
 
       await t.commit();
-      return { success: true, message: 'Compte vendeur créé avec succès', user, profil };
+
+      // Envoyer l'email après commit (hors transaction)
+      try {
+        const { Resend } = require('resend');
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: process.env.RESEND_FROM || 'Yobante Boutique <noreply@yobante.com>',
+          to: emailClean,
+          subject: 'Bienvenue sur Yobante Boutique — Vos accès vendeur',
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+              <h2>Bonjour ${data.prenom} ${data.nom},</h2>
+              <p>Nous avons créé un compte <strong>vendeur</strong> pour vous sur <strong>Yobante Boutique</strong>.</p>
+              <p>Voici vos identifiants de connexion :</p>
+              <table style="border-collapse:collapse;width:100%">
+                <tr><td style="padding:8px;font-weight:bold">Lien de connexion</td><td style="padding:8px"><a href="${process.env.FRONTEND_URL || '#'}">${process.env.FRONTEND_URL || 'https://yobante.com'}</a></td></tr>
+                <tr><td style="padding:8px;font-weight:bold">Identifiant (email)</td><td style="padding:8px">${emailClean}</td></tr>
+                <tr><td style="padding:8px;font-weight:bold">Téléphone</td><td style="padding:8px">${data.telephone || '—'}</td></tr>
+                <tr><td style="padding:8px;font-weight:bold">Mot de passe temporaire</td><td style="padding:8px;font-family:monospace;font-size:18px;letter-spacing:2px"><strong>${plainPassword}</strong></td></tr>
+              </table>
+              <p style="margin-top:16px;color:#e53e3e"><strong>Important :</strong> Lors de votre première connexion, vous devrez obligatoirement changer ce mot de passe.</p>
+              <p>À bientôt sur Yobante Boutique !</p>
+            </div>
+          `,
+        });
+      } catch (mailErr) {
+        require('../config/logger').error('[Vendeur] Email non envoyé', { error: mailErr.message });
+      }
+
+      const { password: _pw, ...userSafe } = user.toJSON();
+      return { success: true, message: 'Compte vendeur créé avec succès', user: userSafe, profil };
     } catch (err) {
       await t.rollback();
       throw err;

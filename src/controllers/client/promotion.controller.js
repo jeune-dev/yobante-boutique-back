@@ -14,9 +14,9 @@ exports.getActives = asyncHandler(async (req, res) => {
   return ok(res, result.promotions, 'Promotions actives');
 });
 
-exports.getBlocs = asyncHandler(async (req, res) => {
-  const result = await PromotionClientService.getBlocs();
-  return ok(res, { blocs: result.blocs }, 'Blocs promo');
+exports.getGroupees = asyncHandler(async (req, res) => {
+  const result = await PromotionClientService.getPromotionsGroupees();
+  return ok(res, result.promotions, 'Promotions récupérées');
 });
 
 exports.getSection = asyncHandler(async (req, res) => {

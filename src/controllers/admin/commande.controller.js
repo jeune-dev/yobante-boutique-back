@@ -57,3 +57,8 @@ exports.marquerLivree = asyncHandler(async (req, res) => {
   if (!result.success) throw new BadRequestError(result.message);
   return ok(res, { commande: result.commande }, result.message);
 });
+
+exports.getKpi = asyncHandler(async (req, res) => {
+  const result = await GestionCommandeService.getKpiCommandes();
+  return ok(res, result.kpi, 'KPI commandes');
+});
