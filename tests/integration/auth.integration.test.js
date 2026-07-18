@@ -119,8 +119,13 @@ describe('Auth Integration Tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.token).toBe('access-token');
-      expect(res.body.data.refreshToken).toBe('refresh-token');
       expect(res.body.data.user).toBeDefined();
+      // Le refresh token n'est plus renvoyé dans le corps : il part en cookie
+      // HttpOnly, donc inaccessible au JavaScript de la page.
+      expect(res.body.data.refreshToken).toBeUndefined();
+      const cookies = res.headers['set-cookie'] || [];
+      expect(cookies.some((c) => c.startsWith('refresh_token=refresh-token'))).toBe(true);
+      expect(cookies.some((c) => c.includes('HttpOnly'))).toBe(true);
     });
 
     it('devrait retourner 400 si identifiant manquant', async () => {

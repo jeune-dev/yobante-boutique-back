@@ -2,7 +2,10 @@
 const { AppError } = require('../errors/AppError');
 const logger = require('../config/logger');
 
-const isProd = process.env.NODE_ENV === 'production';
+// Évalué à chaque appel et non à l'import : NODE_ENV peut être positionné
+// après le chargement du module (tests, scripts), et une constante figée
+// désactiverait silencieusement le masquage des messages en production.
+const enProd = () => process.env.NODE_ENV === 'production';
 
 const CHAMPS_SENSIBLES = [
   'password',
@@ -39,6 +42,15 @@ const errorMiddleware = (err, req, res, _next) => {
     return res.status(err.statusCode).json(body);
   }
 
+  // Joi : validate.middleware.js propage l'erreur brute via next(err).
+  // Sans cette branche, toute validation échouée ressortirait en 500.
+  if (err.isJoi)
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      ...(enProd() ? {} : { details: err.details?.map((d) => d.message) }),
+    });
+
   if (err.name === 'TokenExpiredError')
     return res.status(401).json({ success: false, message: 'Token expiré' });
   if (err.name === 'JsonWebTokenError' || err.name === 'NotBeforeError')
@@ -62,7 +74,7 @@ const errorMiddleware = (err, req, res, _next) => {
     return res.status(422).json({
       success: false,
       message: 'Données invalides',
-      ...(isProd ? {} : { details: err.errors?.map((e) => e.message) }),
+      ...(enProd() ? {} : { details: err.errors?.map((e) => e.message) }),
     });
   if (err.name === 'SequelizeUniqueConstraintError')
     return res.status(409).json({ success: false, message: 'Cette ressource existe déjà' });
@@ -80,7 +92,31 @@ const errorMiddleware = (err, req, res, _next) => {
   )
     return res.status(503).json({ success: false, message: 'Service temporairement indisponible' });
 
-  const message = isProd ? 'Erreur interne du serveur' : err.message || 'Erreur interne du serveur';
+  // Erreurs nommées émises hors AppError (librairies tierces, express-jwt…).
+  const parNom = {
+    ValidationError: [400, 'Données invalides'],
+    UnauthorizedError: [401, err.message],
+    ForbiddenError: [403, err.message],
+    NotFoundError: [404, err.message],
+  }[err.name];
+  if (parNom) return res.status(parNom[0]).json({ success: false, message: parNom[1] });
+
+  // Erreurs portant leur propre statut : `http-errors` et Express posent
+  // `status`, d'autres `statusCode`. Sans cette branche, un 404 ou un 403 émis
+  // par une librairie ressortirait en 500.
+  const statutPorte = Number(err.status || err.statusCode);
+  if (Number.isInteger(statutPorte) && statutPorte >= 400 && statutPorte <= 599) {
+    // Un message de 5xx peut exposer des détails internes : on le masque en prod.
+    const masque = enProd() && statutPorte >= 500;
+    return res.status(statutPorte).json({
+      success: false,
+      message: masque ? 'Erreur interne du serveur' : err.message || 'Erreur interne du serveur',
+    });
+  }
+
+  const message = enProd()
+    ? 'Erreur interne du serveur'
+    : err.message || 'Erreur interne du serveur';
   return res.status(500).json({ success: false, message });
 };
 

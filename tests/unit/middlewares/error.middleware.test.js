@@ -120,11 +120,13 @@ describe('Error Middleware', () => {
 
     errorMiddleware(error, req, res, next);
 
+    // Message volontairement générique : préciser le champ en conflit
+    // permettrait d'énumérer les emails déjà inscrits.
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        message: 'email est déjà utilisé'
+        message: 'Cette ressource existe déjà'
       })
     );
   });
@@ -140,7 +142,7 @@ describe('Error Middleware', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        message: 'Erreur serveur interne'
+        message: 'Erreur interne du serveur'
       })
     );
   });
