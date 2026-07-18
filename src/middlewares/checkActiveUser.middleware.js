@@ -1,4 +1,4 @@
-const AppError = require('../utils/AppError');
+const { AppError } = require('../errors/AppError');
 
 const checkActiveUser = (req, _res, next) => {
   if (!req.user) return next(new AppError('Utilisateur non authentifié', 401));

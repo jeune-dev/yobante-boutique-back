@@ -1,5 +1,5 @@
 const authMiddleware = require('./auth.middleware');
-const AppError = require('../utils/AppError');
+const { AppError } = require('../errors/AppError');
 const { ROLES } = require('../constants');
 const { ProfilVendeur } = require('../models');
 

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { jwtConfig } = require('../config/security');
-const AppError = require('../utils/AppError');
+const { AppError } = require('../errors/AppError');
 
 /**
  * Authentifie via JWT sans toucher la base de données.
