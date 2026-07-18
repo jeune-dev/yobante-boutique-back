@@ -1,62 +1,43 @@
 const GestionPaiementService = require('../../services/admin/paiement.service');
-const ApiResponse = require('../../utils/ApiResponse');
-const logger = require('../../config/logger');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok } = require('../../utils/response');
+const { BadRequestError, NotFoundError } = require('../../errors/AppError');
 
-exports.getAll = async (req, res) => {
-  try {
-    const result = await GestionPaiementService.getAllPaiements(req.query);
-    return ApiResponse.success(200, res, 'Paiements récupérés', {
-      paiements: result.paiements,
-      pagination: result.pagination,
-    });
-  } catch (err) {
-    logger.error('Erreur getAll paiements :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération des paiements');
-  }
-};
+exports.getAll = asyncHandler(async (req, res) => {
+  const result = await GestionPaiementService.getAllPaiements(req.query);
+  return ok(
+    res,
+    { paiements: result.paiements, pagination: result.pagination },
+    'Paiements récupérés'
+  );
+});
 
-exports.getOne = async (req, res) => {
-  try {
-    const result = await GestionPaiementService.getPaiementById(req.params.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, 'Paiement récupéré', { paiement: result.paiement });
-  } catch (err) {
-    logger.error('Erreur getOne paiement :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la récupération du paiement');
-  }
-};
+exports.getOne = asyncHandler(async (req, res) => {
+  const result = await GestionPaiementService.getPaiementById(req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { paiement: result.paiement }, 'Paiement récupéré');
+});
 
-exports.confirmer = async (req, res) => {
-  try {
-    const result = await GestionPaiementService.confirmerPaiement(req.params.id, req.body.transactionId);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message, { paiement: result.paiement });
-  } catch (err) {
-    logger.error('Erreur confirmation paiement :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors de la confirmation du paiement');
-  }
-};
+exports.confirmer = asyncHandler(async (req, res) => {
+  const result = await GestionPaiementService.confirmerPaiement(
+    req.params.id,
+    req.body.transactionId
+  );
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { paiement: result.paiement }, result.message);
+});
 
-exports.getRevenusTotal = async (req, res) => {
-  try {
-    const result = await GestionPaiementService.getRevenusTotal(req.query);
-    return ApiResponse.success(200, res, 'Revenus récupérés', {
-      total: result.total,
-      nbTransactions: result.nbTransactions,
-    });
-  } catch (err) {
-    logger.error('Erreur getRevenusTotal :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors du calcul des revenus');
-  }
-};
+exports.getRevenusTotal = asyncHandler(async (req, res) => {
+  const result = await GestionPaiementService.getRevenusTotal(req.query);
+  return ok(
+    res,
+    { total: result.total, nbTransactions: result.nbTransactions },
+    'Revenus récupérés'
+  );
+});
 
-exports.rembourser = async (req, res) => {
-  try {
-    const result = await GestionPaiementService.rembourserPaiement(req.params.id, req.body.raison);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message, { paiement: result.paiement });
-  } catch (err) {
-    logger.error('Erreur remboursement paiement :', err);
-    return ApiResponse.internalServerError(res, 'Erreur serveur lors du remboursement');
-  }
-};
+exports.rembourser = asyncHandler(async (req, res) => {
+  const result = await GestionPaiementService.rembourserPaiement(req.params.id, req.body.raison);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { paiement: result.paiement }, result.message);
+});

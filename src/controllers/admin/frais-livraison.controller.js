@@ -1,60 +1,38 @@
 const FraisLivraisonService = require('../../services/admin/frais-livraison.service');
-const ApiResponse = require('../../utils/ApiResponse');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok, created } = require('../../utils/response');
+const { NotFoundError } = require('../../errors/AppError');
 
-exports.getAll = async (req, res) => {
-  try {
-    const result = await FraisLivraisonService.getAll();
-    return ApiResponse.success(200, res, 'Tarifs de livraison', { frais: result.frais });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getAll = asyncHandler(async (req, res) => {
+  const result = await FraisLivraisonService.getAll();
+  return ok(res, { frais: result.frais }, 'Tarifs de livraison');
+});
 
-exports.getById = async (req, res) => {
-  try {
-    const result = await FraisLivraisonService.getById(req.params.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, 'Tarif', { frais: result.frais });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getById = asyncHandler(async (req, res) => {
+  const result = await FraisLivraisonService.getById(req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { frais: result.frais }, 'Tarif');
+});
 
-exports.create = async (req, res) => {
-  try {
-    const result = await FraisLivraisonService.create(req.body);
-    return ApiResponse.success(201, res, result.message, { frais: result.frais });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.create = asyncHandler(async (req, res) => {
+  const result = await FraisLivraisonService.create(req.body);
+  return created(res, { frais: result.frais }, result.message);
+});
 
-exports.update = async (req, res) => {
-  try {
-    const result = await FraisLivraisonService.update(req.params.id, req.body);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, result.message, { frais: result.frais });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.update = asyncHandler(async (req, res) => {
+  const result = await FraisLivraisonService.update(req.params.id, req.body);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { frais: result.frais }, result.message);
+});
 
-exports.remove = async (req, res) => {
-  try {
-    const result = await FraisLivraisonService.remove(req.params.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, result.message);
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.remove = asyncHandler(async (req, res) => {
+  const result = await FraisLivraisonService.remove(req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, {}, result.message);
+});
 
-exports.toggleActive = async (req, res) => {
-  try {
-    const result = await FraisLivraisonService.toggleActive(req.params.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, 'Statut mis à jour', { frais: result.frais });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.toggleActive = asyncHandler(async (req, res) => {
+  const result = await FraisLivraisonService.toggleActive(req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { frais: result.frais }, 'Statut mis à jour');
+});

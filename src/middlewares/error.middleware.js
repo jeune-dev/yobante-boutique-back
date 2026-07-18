@@ -1,6 +1,8 @@
+'use strict';
+const { AppError } = require('../errors/AppError');
 const logger = require('../config/logger');
-const AppError = require('../utils/AppError');
-const ApiResponse = require('../utils/ApiResponse');
+
+const isProd = process.env.NODE_ENV === 'production';
 
 const CHAMPS_SENSIBLES = [
   'password',
@@ -11,8 +13,6 @@ const CHAMPS_SENSIBLES = [
   'code',
   'otp',
 ];
-
-/** Retourne une copie du body avec les champs sensibles masqués, pour ne jamais les écrire dans les logs. */
 function redactBody(body) {
   if (!body || typeof body !== 'object') return body;
   const clean = { ...body };
@@ -22,87 +22,68 @@ function redactBody(body) {
   return clean;
 }
 
-/**
- * Global Error Handler Middleware
- *
- * Gère tous les types d'erreurs:
- * - AppError (erreurs métier)
- * - Joi ValidationError
- * - Sequelize errors
- * - Erreurs non capturées
- */
 const errorMiddleware = (err, req, res, _next) => {
-  const statusCode = err.statusCode || err.status || 500;
-  const message = err.message || 'Erreur serveur interne';
+  logger.error(err.message, {
+    name: err.name,
+    statusCode: err.statusCode,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    stack: err.stack,
+    body: redactBody(req.body),
+  });
 
-  // Log l'erreur
-  const meta = { requestId: req.requestId, path: req.path, method: req.method };
-  if (statusCode >= 500) {
-    logger.error(`[${statusCode}] ${message}`, {
-      ...meta,
-      stack: err.stack,
-      body: redactBody(req.body),
-    });
-  } else {
-    logger.warn(`[${statusCode}] ${message}`, meta);
+  if (err instanceof AppError && err.isOperational) {
+    const body = { success: false, message: err.message };
+    if (err.details && err.details.length) body.details = err.details;
+    return res.status(err.statusCode).json(body);
   }
 
-  // ── Erreurs Joi (validation) ───────────────────────────────
-  if (err.isJoi || (err.details && Array.isArray(err.details))) {
-    const errors = (err.details || []).map((detail) => ({
-      field: detail.path?.join('.') || 'unknown',
-      message: detail.message,
-    }));
-    return ApiResponse.badRequest(res, 'Données invalides', errors);
+  if (err.name === 'TokenExpiredError')
+    return res.status(401).json({ success: false, message: 'Token expiré' });
+  if (err.name === 'JsonWebTokenError' || err.name === 'NotBeforeError')
+    return res.status(401).json({ success: false, message: 'Token invalide' });
+
+  if (err.name === 'MulterError') {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'Fichier trop volumineux (max 5 MB)'
+        : "Erreur lors de l'envoi du fichier";
+    return res.status(400).json({ success: false, message });
   }
 
-  // ── Erreurs de validation génériques (ex: express-validator, mongoose) ──
-  if (err.name === 'ValidationError') {
-    return ApiResponse.badRequest(res, 'Données invalides', err.errors);
-  }
+  if (err.type === 'entity.parse.failed' || err instanceof SyntaxError)
+    return res.status(400).json({ success: false, message: 'Corps de requête JSON invalide' });
 
-  // ── Erreurs JWT ────────────────────────────────────────────
-  if (err.name === 'JsonWebTokenError') {
-    return ApiResponse.unauthorized(res, 'Token invalide');
-  }
+  if (err.status === 413 || err.type === 'entity.too.large')
+    return res.status(413).json({ success: false, message: 'Corps de la requête trop volumineux' });
 
-  if (err.name === 'TokenExpiredError') {
-    return ApiResponse.unauthorized(res, 'Token expiré');
-  }
+  if (err.name === 'SequelizeValidationError')
+    return res
+      .status(422)
+      .json({
+        success: false,
+        message: 'Données invalides',
+        ...(isProd ? {} : { details: err.errors?.map((e) => e.message) }),
+      });
+  if (err.name === 'SequelizeUniqueConstraintError')
+    return res.status(409).json({ success: false, message: 'Cette ressource existe déjà' });
+  if (err.name === 'SequelizeForeignKeyConstraintError')
+    return res
+      .status(400)
+      .json({ success: false, message: 'Référence invalide : ressource liée introuvable' });
+  if (
+    [
+      'SequelizeConnectionError',
+      'SequelizeConnectionRefusedError',
+      'SequelizeConnectionTimedOutError',
+      'SequelizeTimeoutError',
+    ].includes(err.name)
+  )
+    return res.status(503).json({ success: false, message: 'Service temporairement indisponible' });
 
-  if (err.name === 'UnauthorizedError') {
-    return ApiResponse.unauthorized(res, err.message || 'Non autorisé');
-  }
-
-  // ── Erreurs Sequelize ──────────────────────────────────────
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    const field = err.errors?.[0]?.path || 'unknown';
-    return ApiResponse.conflict(res, `${field} est déjà utilisé`);
-  }
-
-  if (err.name === 'SequelizeValidationError') {
-    const errors = (err.errors || []).map((e) => ({
-      field: e.path,
-      message: e.message,
-    }));
-    return ApiResponse.badRequest(res, 'Validation base de données échouée', errors);
-  }
-
-  if (err.name === 'SequelizeForeignKeyConstraintError') {
-    return ApiResponse.badRequest(res, 'Référence invalide vers une ressource');
-  }
-
-  // ── AppError (erreurs métier attendues) ───────────────────
-  if (err instanceof AppError) {
-    return ApiResponse.error(err.statusCode, res, err.message);
-  }
-
-  // ── Erreur générique (statusCode/status personnalisé, ou 500 par défaut) ──
-  // Ne jamais exposer le détail d'une erreur 500 en production.
-  const responseMessage =
-    statusCode >= 500 && process.env.NODE_ENV === 'production' ? 'Erreur serveur interne' : message;
-
-  return ApiResponse.error(statusCode, res, responseMessage);
+  const message = isProd ? 'Erreur interne du serveur' : err.message || 'Erreur interne du serveur';
+  return res.status(500).json({ success: false, message });
 };
 
 module.exports = errorMiddleware;

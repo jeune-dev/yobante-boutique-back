@@ -1,39 +1,24 @@
 const PromotionClientService = require('../../services/client/promotion.service');
-const ApiResponse = require('../../utils/ApiResponse');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok } = require('../../utils/response');
+const { BadRequestError } = require('../../errors/AppError');
 
-exports.getSections = async (req, res) => {
-  try {
-    const result = await PromotionClientService.getSections();
-    return ApiResponse.success(200, res, 'Sections promotionnelles', { sections: result.sections });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getSections = asyncHandler(async (req, res) => {
+  const result = await PromotionClientService.getSections();
+  return ok(res, { sections: result.sections }, 'Sections promotionnelles');
+});
 
-exports.getActives = async (req, res) => {
-  try {
-    const result = await PromotionClientService.getActives();
-    // Tableau renvoyé directement dans `data` (format attendu par l'app mobile).
-    return ApiResponse.success(200, res, 'Promotions actives', result.promotions);
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getActives = asyncHandler(async (req, res) => {
+  const result = await PromotionClientService.getActives();
+  // Tableau renvoyé directement dans `data` (format attendu par l'app mobile).
+  return ok(res, result.promotions, 'Promotions actives');
+});
 
-exports.getSection = async (req, res) => {
+exports.getSection = asyncHandler(async (req, res) => {
   const sections = ['nos_promos_du_moment', 'a_ne_pas_rater', 'nos_promos_a_venir'];
   if (!sections.includes(req.params.section)) {
-    return ApiResponse.badRequest(
-      res,
-      `Section invalide. Valeurs acceptées : ${sections.join(', ')}`
-    );
+    throw new BadRequestError(`Section invalide. Valeurs acceptées : ${sections.join(', ')}`);
   }
-  try {
-    const result = await PromotionClientService.getSection(req.params.section);
-    return ApiResponse.success(200, res, `Promotions : ${req.params.section}`, {
-      promotions: result.promotions,
-    });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+  const result = await PromotionClientService.getSection(req.params.section);
+  return ok(res, { promotions: result.promotions }, `Promotions : ${req.params.section}`);
+});

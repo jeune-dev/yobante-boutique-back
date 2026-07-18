@@ -1,33 +1,23 @@
 const VendeurProfilService = require('../../services/vendeur/profil.service');
-const ApiResponse = require('../../utils/ApiResponse');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok } = require('../../utils/response');
+const { BadRequestError, NotFoundError } = require('../../errors/AppError');
 
-exports.getProfil = async (req, res) => {
-  try {
-    const result = await VendeurProfilService.getProfil(req.user.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, 'Profil vendeur', { profil: result.profil });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getProfil = asyncHandler(async (req, res) => {
+  const result = await VendeurProfilService.getProfil(req.user.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { profil: result.profil }, 'Profil vendeur');
+});
 
-exports.updateProfil = async (req, res) => {
-  try {
-    const result = await VendeurProfilService.updateProfil(req.user.id, req.body);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, result.message, { profil: result.profil });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.updateProfil = asyncHandler(async (req, res) => {
+  const result = await VendeurProfilService.updateProfil(req.user.id, req.body);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { profil: result.profil }, result.message);
+});
 
-exports.updateLogo = async (req, res) => {
-  try {
-    if (!req.file) return ApiResponse.badRequest(res, 'Fichier image requis');
-    const result = await VendeurProfilService.updateLogo(req.user.id, req.file);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, result.message, { logo: result.logo });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.updateLogo = asyncHandler(async (req, res) => {
+  if (!req.file) throw new BadRequestError('Fichier image requis');
+  const result = await VendeurProfilService.updateLogo(req.user.id, req.file);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { logo: result.logo }, result.message);
+});

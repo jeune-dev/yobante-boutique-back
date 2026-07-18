@@ -52,10 +52,32 @@ const uploadLimiter = rateLimit({
   message: { success: false, message: "Trop d'uploads. Réessayez dans 10 minutes." },
 });
 
+// 3 envois d'OTP / 15 min par email — anti-spam email
+const otpEmailLimiter = rateLimit({
+  standardHeaders: true,
+  legacyHeaders: false,
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) => req.body?.email || req.ip,
+  message: { success: false, message: 'Trop de codes envoyés. Réessayez dans 15 minutes.' },
+});
+
+// 300 req / 15 min par userId — endpoints authentifiés (dashboard, catalogue, etc.)
+const authenticatedLimiter = rateLimit({
+  standardHeaders: true,
+  legacyHeaders: false,
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  message: { success: false, message: 'Limite de requêtes atteinte. Réessayez dans 15 minutes.' },
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
   registerLimiter,
   forgotPasswordLimiter,
   uploadLimiter,
+  otpEmailLimiter,
+  authenticatedLimiter,
 };

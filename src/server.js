@@ -25,9 +25,33 @@ async function startServer() {
     await seedAdmin();
     logger.info('Seed admin vérifié');
 
-    app.listen(PORT, '0.0.0.0', () => {
+    // Démarrage du job de nettoyage des tokens expirés (chaque lundi à minuit)
+    const { startCleanupJob } = require('./jobs/cleanupExpiredTokens.job');
+    startCleanupJob();
+
+    const server = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`Serveur lancé sur le port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
     });
+
+    const shutdown = (signal) => {
+      logger.info(`Signal ${signal} reçu — arrêt en cours…`);
+      server.close(async () => {
+        try {
+          await sequelize.close();
+        } catch (_err) {
+          /* ignore */
+        }
+        logger.info('Connexion DB fermée proprement');
+        process.exit(0);
+      });
+      setTimeout(() => {
+        logger.error('Arrêt forcé après 10s');
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     logger.error('Erreur au démarrage', { error: err.message, stack: err.stack });
     process.exit(1);
@@ -41,6 +65,7 @@ process.on('uncaughtException', (err) => {
 
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled Rejection', { reason: String(reason) });
+  process.exit(1);
 });
 
 startServer();

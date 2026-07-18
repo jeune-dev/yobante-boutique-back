@@ -27,11 +27,19 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 
 app.get('/', (_req, res) => {
-  res.status(200).json({ name: 'Yobante Boutique API', status: 'ok', docs: '/api-docs', api: '/api/v1' });
+  res
+    .status(200)
+    .json({ name: 'Yobante Boutique API', status: 'ok', docs: '/api-docs', api: '/api/v1' });
 });
 
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', env: process.env.NODE_ENV || 'development', timestamp: new Date().toISOString() });
+  res
+    .status(200)
+    .json({
+      status: 'ok',
+      env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+    });
 });
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
@@ -47,6 +55,8 @@ app.use('/api/v1/profile', require('./routes/client/profil.route'));
 app.use('/api/v1/bannieres', require('./routes/client/banniere.route'));
 app.use('/api/v1/promotions', require('./routes/client/promotion.route'));
 app.use('/api/v1/frais-livraisons', require('./routes/client/frais-livraison.route'));
+app.use('/api/v1/favoris', require('./routes/client/favori.route'));
+app.use('/api/v1/boutiques', require('./routes/client/boutique.route'));
 
 // Évite la boucle /api/v1/v1/…
 app.use('/api', (req, res, next) => {
