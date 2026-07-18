@@ -2,7 +2,7 @@
 // services/client/promotion.service.js
 // ─────────────────────────────────────────────────────────────
 const { Op } = require('sequelize');
-const { Promotion, Produit, Categorie } = require('../../models');
+const { Promotion, Produit, Categorie, BlocPromo } = require('../../models');
 
 class PromotionClientService {
   /** Retourne les 3 sections promotionnelles pour la page Promotions de l'app */
@@ -86,6 +86,15 @@ class PromotionClientService {
     });
 
     return { success: true, promotions };
+  }
+
+  /** Métadonnées (image, titre) des blocs promo actifs — pour l'app mobile. */
+  static async getBlocs() {
+    const blocs = await BlocPromo.findAll({
+      where: { isActive: true },
+      order: [['ordre', 'ASC']],
+    });
+    return { success: true, blocs };
   }
 
   static async getSection(section) {

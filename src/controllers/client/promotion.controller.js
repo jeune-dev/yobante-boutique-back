@@ -20,6 +20,15 @@ exports.getActives = async (req, res) => {
   }
 };
 
+exports.getBlocs = async (req, res) => {
+  try {
+    const result = await PromotionClientService.getBlocs();
+    return ApiResponse.success(200, res, 'Blocs promo', { blocs: result.blocs });
+  } catch (err) {
+    return ApiResponse.internalServerError(res, err.message);
+  }
+};
+
 exports.getSection = async (req, res) => {
   const sections = ['nos_promos_du_moment', 'a_ne_pas_rater', 'nos_promos_a_venir'];
   if (!sections.includes(req.params.section)) {

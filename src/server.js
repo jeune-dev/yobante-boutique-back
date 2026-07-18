@@ -22,6 +22,7 @@ const {
   Promotion,
   FraisLivraison,
   Favori,
+  BlocPromo,
 } = require('./models');
 
 const PORT = process.env.PORT || 5000;
@@ -56,12 +57,17 @@ async function startServer() {
     await Promotion.sync(syncOptions);
     await FraisLivraison.sync(syncOptions);
     await Favori.sync(syncOptions);
+    await BlocPromo.sync(syncOptions);
 
     logger.info('Modèles synchronisés avec la base de données');
 
     const seedAdmin = require('./seeders/adminSeeder');
     await seedAdmin();
     logger.info('Seed admin vérifié');
+
+    const seedBlocsPromo = require('./seeders/blocPromoSeeder');
+    await seedBlocsPromo();
+    logger.info('Seed blocs promo vérifié');
 
     app.listen(PORT, '0.0.0.0', () => {
       logger.info(`Serveur lancé sur le port ${PORT} [${process.env.NODE_ENV || 'development'}]`);

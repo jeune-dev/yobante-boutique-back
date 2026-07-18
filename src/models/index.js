@@ -19,6 +19,7 @@ const Banniere = require('./Banniere.model');
 const Promotion = require('./Promotion.model');
 const FraisLivraison = require('./FraisLivraison.model');
 const Favori = require('./Favori.model');
+const BlocPromo = require('./BlocPromo.model');
 
 // ── User associations ──────────────────────────────────────────
 User.hasMany(Commande, { foreignKey: 'userId', as: 'commandes', onDelete: 'CASCADE' });
@@ -119,4 +120,5 @@ module.exports = {
   Promotion,
   FraisLivraison,
   Favori,
+  BlocPromo,
 };
