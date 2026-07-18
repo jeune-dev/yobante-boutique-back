@@ -14,6 +14,15 @@ exports.getActives = asyncHandler(async (req, res) => {
   return ok(res, result.promotions, 'Promotions actives');
 });
 
+/**
+ * Blocs des sections, pilotés depuis le dashboard.
+ * Le mobile s'en sert pour l'image et le titre de chaque sous-section.
+ */
+exports.getBlocs = asyncHandler(async (req, res) => {
+  const result = await PromotionClientService.getBlocs();
+  return ok(res, { blocs: result.blocs }, 'Blocs promo');
+});
+
 exports.getGroupees = asyncHandler(async (req, res) => {
   const result = await PromotionClientService.getPromotionsGroupees();
   return ok(res, result.promotions, 'Promotions récupérées');

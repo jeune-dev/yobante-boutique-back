@@ -1,9 +1,11 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
-// Métadonnées d'affichage d'un bloc promo (une ligne par section).
-// L'image et le titre du bloc sont pilotés depuis le dashboard admin et
-// consommés par l'app mobile (remplace les images figées en dur).
+// Bloc promotionnel d'une section de l'accueil client.
+//
+// Une section porte autant de blocs que voulu — ce sont les « sous-sections »
+// visibles dans l'application, ordonnées par `ordre`. Image, titre et
+// sous-titre sont pilotés depuis le dashboard admin.
 const BlocPromo = sequelize.define(
   'BlocPromo',
   {
@@ -15,8 +17,7 @@ const BlocPromo = sequelize.define(
     section: {
       type: DataTypes.ENUM('nos_promos_du_moment', 'a_ne_pas_rater', 'nos_promos_a_venir'),
       allowNull: false,
-      unique: true,
-      comment: 'Identifie le bloc promo (une seule ligne par section)',
+      comment: 'Section de rattachement — plusieurs blocs possibles par section',
     },
     titre: {
       type: DataTypes.STRING(200),
@@ -43,6 +44,8 @@ const BlocPromo = sequelize.define(
   {
     timestamps: true,
     tableName: 'blocs_promo',
+    // L'accueil lit les blocs section par section, dans l'ordre d'affichage.
+    indexes: [{ fields: ['section', 'ordre'] }],
   }
 );
 

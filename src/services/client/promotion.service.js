@@ -2,9 +2,26 @@
 // services/client/promotion.service.js
 // ─────────────────────────────────────────────────────────────
 const { Op } = require('sequelize');
-const { Promotion, Produit, Categorie, Rayon, SousRayon } = require('../../models');
+const { Promotion, Produit, Categorie, Rayon, SousRayon, BlocPromo } = require('../../models');
 
 class PromotionClientService {
+  /**
+   * Blocs (sous-sections) affichés en tête des sections de l'accueil.
+   *
+   * Seuls les blocs actifs sont exposés, dans l'ordre défini par
+   * l'administration. Une section peut en porter plusieurs.
+   */
+  static async getBlocs() {
+    const blocs = await BlocPromo.findAll({
+      where: { isActive: true },
+      order: [
+        ['section', 'ASC'],
+        ['ordre', 'ASC'],
+      ],
+    });
+    return { success: true, blocs };
+  }
+
   /** Retourne les 3 sections promotionnelles pour la page Promotions de l'app */
   static async getSections() {
     const now = new Date();
