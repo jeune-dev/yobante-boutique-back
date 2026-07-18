@@ -17,7 +17,6 @@ const Promotion = sequelize.define(
     section: {
       type: DataTypes.ENUM('nos_promos_du_moment', 'a_ne_pas_rater', 'nos_promos_a_venir'),
       allowNull: false,
-      comment: "Section d'affichage sur la page promotions",
     },
     titre: {
       type: DataTypes.STRING(200),

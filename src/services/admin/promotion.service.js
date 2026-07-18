@@ -27,6 +27,7 @@ class PromotionService {
       ],
       limit: l,
       offset,
+      distinct: true,
     });
 
     return {

@@ -5,61 +5,25 @@ const logger = require('./config/logger');
 const app = require('./app');
 
 // Initialise toutes les associations Sequelize
-const {
-  User,
-  Categorie,
-  Produit,
-  Adresse,
-  Commande,
-  CommandeItem,
-  Paiement,
-  Panier,
-  Avis,
-  RefreshToken,
-  UserOtp,
-  ProfilVendeur,
-  Banniere,
-  Promotion,
-  FraisLivraison,
-  Favori,
-  BlocPromo,
-} = require('./models');
+require('./models');
 
 const PORT = process.env.PORT || 5000;
-const isProd = process.env.NODE_ENV === 'production';
 
 async function startServer() {
   try {
     await sequelize.authenticate();
     logger.info('Connexion PostgreSQL établie');
 
-    // force:false partout — crée les tables manquantes sans jamais les altérer.
-    // On n'utilise PAS alter:true : sur Postgres, Sequelize régénère à chaque boot
-    // un `ALTER COLUMN ... TYPE ... USING` invalide pour les colonnes ENUM
-    // (ex. Produit.statutValidation), ce qui fait planter tout redémarrage.
-    // L'évolution de schéma passe par les migrations Sequelize.
-    const syncOptions = { force: false };
-
-    // Ordre explicite : tables parents avant enfants (FK constraints)
-    await User.sync(syncOptions);
-    await Categorie.sync(syncOptions);
-    await Produit.sync(syncOptions);
-    await Adresse.sync(syncOptions);
-    await Commande.sync(syncOptions);
-    await CommandeItem.sync(syncOptions);
-    await Paiement.sync(syncOptions);
-    await Panier.sync(syncOptions);
-    await Avis.sync(syncOptions);
-    await RefreshToken.sync(syncOptions);
-    await UserOtp.sync(syncOptions);
-    await ProfilVendeur.sync(syncOptions);
-    await Banniere.sync(syncOptions);
-    await Promotion.sync(syncOptions);
-    await FraisLivraison.sync(syncOptions);
-    await Favori.sync(syncOptions);
-    await BlocPromo.sync(syncOptions);
-
-    logger.info('Modèles synchronisés avec la base de données');
+    // En production les tables existent déjà — on évite sync() qui touche
+    // les index système et peut crasher sur des catalogs corrompus.
+    // force:false uniquement : jamais alter:true, car sur Postgres Sequelize
+    // régénère à chaque boot un `ALTER COLUMN ... TYPE ... USING` invalide pour
+    // les colonnes ENUM (ex. Produit.statutValidation). L'évolution de schéma
+    // passe par les migrations Sequelize.
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync({ force: false });
+      logger.info('Modèles synchronisés avec la base de données');
+    }
 
     const seedAdmin = require('./seeders/adminSeeder');
     await seedAdmin();
@@ -69,9 +33,33 @@ async function startServer() {
     await seedBlocsPromo();
     logger.info('Seed blocs promo vérifié');
 
-    app.listen(PORT, '0.0.0.0', () => {
+    // Démarrage du job de nettoyage des tokens expirés (chaque lundi à minuit)
+    const { startCleanupJob } = require('./jobs/cleanupExpiredTokens.job');
+    startCleanupJob();
+
+    const server = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`Serveur lancé sur le port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
     });
+
+    const shutdown = (signal) => {
+      logger.info(`Signal ${signal} reçu — arrêt en cours…`);
+      server.close(async () => {
+        try {
+          await sequelize.close();
+        } catch (_err) {
+          /* ignore */
+        }
+        logger.info('Connexion DB fermée proprement');
+        process.exit(0);
+      });
+      setTimeout(() => {
+        logger.error('Arrêt forcé après 10s');
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     logger.error('Erreur au démarrage', { error: err.message, stack: err.stack });
     process.exit(1);

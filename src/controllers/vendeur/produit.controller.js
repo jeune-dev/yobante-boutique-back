@@ -1,81 +1,55 @@
 const VendeurProduitService = require('../../services/vendeur/produit.service');
-const ApiResponse = require('../../utils/ApiResponse');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok, created } = require('../../utils/response');
+const { BadRequestError, NotFoundError } = require('../../errors/AppError');
 
-exports.soumettre = async (req, res) => {
-  try {
-    const result = await VendeurProduitService.soumettreProduit(req.user.id, req.body, req.files);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(201, res, result.message, { produit: result.produit });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.soumettre = asyncHandler(async (req, res) => {
+  const result = await VendeurProduitService.soumettreProduit(req.user.id, req.body, req.files);
+  if (!result.success) throw new BadRequestError(result.message);
+  return created(res, { produit: result.produit }, result.message);
+});
 
-exports.getMesProduits = async (req, res) => {
-  try {
-    const result = await VendeurProduitService.getMesProduits(req.user.id, req.query);
-    return ApiResponse.success(200, res, 'Mes produits', result);
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getMesProduits = asyncHandler(async (req, res) => {
+  const result = await VendeurProduitService.getMesProduits(req.user.id, req.query);
+  return ok(res, result, 'Mes produits');
+});
 
-exports.getOne = async (req, res) => {
-  try {
-    const result = await VendeurProduitService.getProduitById(req.user.id, req.params.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, 'Produit', { produit: result.produit });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getOne = asyncHandler(async (req, res) => {
+  const result = await VendeurProduitService.getProduitById(req.user.id, req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { produit: result.produit }, 'Produit');
+});
 
-exports.update = async (req, res) => {
-  try {
-    const result = await VendeurProduitService.updateProduit(
-      req.user.id,
-      req.params.id,
-      req.body,
-      req.files
-    );
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message, { produit: result.produit });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.update = asyncHandler(async (req, res) => {
+  const result = await VendeurProduitService.updateProduit(
+    req.user.id,
+    req.params.id,
+    req.body,
+    req.files
+  );
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { produit: result.produit }, result.message);
+});
 
-exports.updateStock = async (req, res) => {
-  try {
-    const { stock, stockAlloue } = req.body;
-    const result = await VendeurProduitService.updateStock(
-      req.user.id,
-      req.params.id,
-      stock,
-      stockAlloue
-    );
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message, { produit: result.produit });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.updateStock = asyncHandler(async (req, res) => {
+  const { stock, stockAlloue } = req.body;
+  const result = await VendeurProduitService.updateStock(
+    req.user.id,
+    req.params.id,
+    stock,
+    stockAlloue
+  );
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { produit: result.produit }, result.message);
+});
 
-exports.supprimer = async (req, res) => {
-  try {
-    const result = await VendeurProduitService.supprimerProduit(req.user.id, req.params.id);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message);
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.supprimer = asyncHandler(async (req, res) => {
+  const result = await VendeurProduitService.supprimerProduit(req.user.id, req.params.id);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, {}, result.message);
+});
 
-exports.getStats = async (req, res) => {
-  try {
-    const result = await VendeurProduitService.getStats(req.user.id);
-    return ApiResponse.success(200, res, 'Statistiques', { stats: result.stats });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getStats = asyncHandler(async (req, res) => {
+  const result = await VendeurProduitService.getStats(req.user.id);
+  return ok(res, { stats: result.stats }, 'Statistiques');
+});

@@ -2,119 +2,92 @@
 // controllers/admin/dashboard.controller.js
 // ─────────────────────────────────────────────────────────────
 const DashboardService = require('../../services/admin/dashboard.service');
-const ApiResponse = require('../../utils/ApiResponse');
-const logger = require('../../config/logger');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok } = require('../../utils/response');
 
-exports.getStats = async (req, res) => {
-  try {
-    const result = await DashboardService.getStatsGlobales();
-    return ApiResponse.success(200, res, 'Statistiques récupérées', {
+exports.getStats = asyncHandler(async (req, res) => {
+  const result = await DashboardService.getStatsGlobales();
+  return ok(
+    res,
+    {
       totalClients: result.totalClients,
+      totalVendeurs: result.totalVendeurs,
+      totalCategories: result.totalCategories,
       totalProduits: result.totalProduits,
       totalCommandes: result.totalCommandes,
       chiffreAffaires: result.chiffreAffaires,
-    });
-  } catch (err) {
-    logger.error('Erreur getStats dashboard :', err);
-    return ApiResponse.internalServerError(
-      res,
-      'Erreur serveur lors de la récupération des statistiques'
-    );
-  }
-};
+    },
+    'Statistiques récupérées'
+  );
+});
 
-exports.getCommandesParStatut = async (req, res) => {
-  try {
-    const result = await DashboardService.getCommandesParStatut();
-    return ApiResponse.success(200, res, 'Répartition des commandes récupérée', {
-      stats: result.stats,
-    });
-  } catch (err) {
-    logger.error('Erreur getCommandesParStatut :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getOverview = asyncHandler(async (req, res) => {
+  const [stats, kpiResult, topProduitsResult, clientsActifsResult] = await Promise.all([
+    DashboardService.getStatsGlobales(),
+    DashboardService.getKpiStocks(),
+    DashboardService.getProduitsPlusVendus(5),
+    DashboardService.getClientsActifs(5),
+  ]);
+  return ok(
+    res,
+    {
+      totalClients: stats.totalClients,
+      totalVendeurs: stats.totalVendeurs,
+      totalCategories: stats.totalCategories,
+      totalProduits: stats.totalProduits,
+      totalCommandes: stats.totalCommandes,
+      chiffreAffaires: stats.chiffreAffaires,
+      produitsEnAttente: kpiResult.kpi.produitsEnAttente,
+      produitsEnRupture: kpiResult.kpi.produitsEnRupture,
+      stockFaible: kpiResult.kpi.stockFaible,
+      topProduits: topProduitsResult.produits,
+      clientsActifs: clientsActifsResult.clients,
+    },
+    "Vue d'ensemble récupérée"
+  );
+});
 
-exports.getRevenus = async (req, res) => {
-  try {
-    const annee = req.query.annee ? Number(req.query.annee) : undefined;
-    const result = await DashboardService.getRevenusParMois(annee);
-    return ApiResponse.success(200, res, 'Revenus récupérés', { revenus: result.revenus });
-  } catch (err) {
-    logger.error('Erreur getRevenus :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getCommandesParStatut = asyncHandler(async (req, res) => {
+  const result = await DashboardService.getCommandesParStatut();
+  return ok(res, { stats: result.stats }, 'Répartition des commandes récupérée');
+});
 
-exports.getProduitsPlusVendus = async (req, res) => {
-  try {
-    const limit = req.query.limit ? Number(req.query.limit) : 10;
-    const result = await DashboardService.getProduitsPlusVendus(limit);
-    return ApiResponse.success(200, res, 'Produits les plus vendus récupérés', {
-      produits: result.produits,
-    });
-  } catch (err) {
-    logger.error('Erreur getProduitsPlusVendus :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getRevenus = asyncHandler(async (req, res) => {
+  const annee = req.query.annee ? Number(req.query.annee) : undefined;
+  const result = await DashboardService.getRevenusParMois(annee);
+  return ok(res, { revenus: result.revenus }, 'Revenus récupérés');
+});
 
-exports.getClientsActifs = async (req, res) => {
-  try {
-    const limit = req.query.limit ? Number(req.query.limit) : 10;
-    const result = await DashboardService.getClientsActifs(limit);
-    return ApiResponse.success(200, res, 'Clients les plus actifs récupérés', {
-      clients: result.clients,
-    });
-  } catch (err) {
-    logger.error('Erreur getClientsActifs :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getProduitsPlusVendus = asyncHandler(async (req, res) => {
+  const limit = req.query.limit ? Number(req.query.limit) : 10;
+  const result = await DashboardService.getProduitsPlusVendus(limit);
+  return ok(res, { produits: result.produits }, 'Produits les plus vendus récupérés');
+});
 
-exports.getCommandesRecentes = async (req, res) => {
-  try {
-    const limit = req.query.limit ? Number(req.query.limit) : 10;
-    const result = await DashboardService.getCommandesRecentes(limit);
-    return ApiResponse.success(200, res, 'Commandes récentes récupérées', {
-      commandes: result.commandes,
-    });
-  } catch (err) {
-    logger.error('Erreur getCommandesRecentes :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getClientsActifs = asyncHandler(async (req, res) => {
+  const limit = req.query.limit ? Number(req.query.limit) : 10;
+  const result = await DashboardService.getClientsActifs(limit);
+  return ok(res, { clients: result.clients }, 'Clients les plus actifs récupérés');
+});
 
-exports.getStockAlertes = async (req, res) => {
-  try {
-    const seuil = req.query.seuil ? Number(req.query.seuil) : 5;
-    const result = await DashboardService.getStockAlertes(seuil);
-    return ApiResponse.success(200, res, 'Alertes stock récupérées', { produits: result.produits });
-  } catch (err) {
-    logger.error('Erreur getStockAlertes :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getCommandesRecentes = asyncHandler(async (req, res) => {
+  const limit = req.query.limit ? Number(req.query.limit) : 10;
+  const result = await DashboardService.getCommandesRecentes(limit);
+  return ok(res, { commandes: result.commandes }, 'Commandes récentes récupérées');
+});
 
-exports.getKpiStocks = async (req, res) => {
-  try {
-    const result = await DashboardService.getKpiStocks();
-    return ApiResponse.success(200, res, 'KPI stocks', {
-      kpi: result.kpi,
-      produitsRupture: result.produitsRupture,
-    });
-  } catch (err) {
-    logger.error('Erreur getKpiStocks :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getStockAlertes = asyncHandler(async (req, res) => {
+  const seuil = req.query.seuil ? Number(req.query.seuil) : 5;
+  const result = await DashboardService.getStockAlertes(seuil);
+  return ok(res, { produits: result.produits }, 'Alertes stock récupérées');
+});
 
-exports.getStatsVendeurs = async (req, res) => {
-  try {
-    const result = await DashboardService.getStatsVendeurs();
-    return ApiResponse.success(200, res, 'Stats vendeurs', { stats: result.stats });
-  } catch (err) {
-    logger.error('Erreur getStatsVendeurs :', err);
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.getKpiStocks = asyncHandler(async (req, res) => {
+  const result = await DashboardService.getKpiStocks();
+  return ok(res, { kpi: result.kpi, produitsRupture: result.produitsRupture }, 'KPI stocks');
+});
+
+exports.getStatsVendeurs = asyncHandler(async (req, res) => {
+  const result = await DashboardService.getStatsVendeurs();
+  return ok(res, { stats: result.stats }, 'Stats vendeurs');
+});

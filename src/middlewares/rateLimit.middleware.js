@@ -6,11 +6,11 @@ const _base = {
   keyGenerator: (req) => req.ip,
 };
 
-// 100 req / 15 min par IP — toutes routes confondues
+// 1000 req / 15 min par IP en dev, 100 en prod
 const globalLimiter = rateLimit({
   ..._base,
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000,
 });
 
 // 10 tentatives / 15 min — login + refresh (brute force)
@@ -52,10 +52,32 @@ const uploadLimiter = rateLimit({
   message: { success: false, message: "Trop d'uploads. Réessayez dans 10 minutes." },
 });
 
+// 3 envois d'OTP / 15 min par email — anti-spam email
+const otpEmailLimiter = rateLimit({
+  standardHeaders: true,
+  legacyHeaders: false,
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) => req.body?.email || req.ip,
+  message: { success: false, message: 'Trop de codes envoyés. Réessayez dans 15 minutes.' },
+});
+
+// 300 req / 15 min par userId — endpoints authentifiés (dashboard, catalogue, etc.)
+const authenticatedLimiter = rateLimit({
+  standardHeaders: true,
+  legacyHeaders: false,
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  message: { success: false, message: 'Limite de requêtes atteinte. Réessayez dans 15 minutes.' },
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
   registerLimiter,
   forgotPasswordLimiter,
   uploadLimiter,
+  otpEmailLimiter,
+  authenticatedLimiter,
 };

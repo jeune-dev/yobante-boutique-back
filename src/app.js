@@ -16,36 +16,22 @@ const app = express();
 
 app.set('trust proxy', 1);
 
-// ── Compression ───────────────────────────────────────────────────────────────
 app.use(compression());
-
-// ── Observabilité ─────────────────────────────────────────────────────────────
 app.use(correlationId);
 app.use(requestLogger);
-
-// ── Sécurité ──────────────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors(corsConfig));
 app.use(globalLimiter);
-
-// ── Parsers (2mb max — 10mb est un vecteur DoS) ───────────────────────────────
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 
-// ── Racine ─────────────────────────────────────────────────────────────────────
-// Répond 200 aux sondes (Render, load balancer) qui pinguent « / » — évite les
-// 404 parasites dans les logs. Express gère aussi HEAD / via cette route GET.
 app.get('/', (_req, res) => {
-  res.status(200).json({
-    name: 'Yobante Boutique API',
-    status: 'ok',
-    docs: '/api-docs',
-    api: '/api/v1',
-  });
+  res
+    .status(200)
+    .json({ name: 'Yobante Boutique API', status: 'ok', docs: '/api-docs', api: '/api/v1' });
 });
 
-// ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -54,16 +40,12 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// ── API Documentation ─────────────────────────────────────────────────────────
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
-// ── Routes /api/v1 ────────────────────────────────────────────────────────────
 app.use('/api/v1/auth', require('./routes/auth.routes'));
 app.use('/api/v1/admin', require('./routes/admin/index'));
 app.use('/api/v1/vendeur', require('./routes/vendeur/index'));
 app.use('/api/v1/produits', require('./routes/client/produit.route'));
-app.use('/api/v1/boutiques', require('./routes/client/boutique.route'));
-app.use('/api/v1/favoris', require('./routes/client/favori.route'));
 app.use('/api/v1/panier', require('./routes/client/panier.route'));
 app.use('/api/v1/commandes', require('./routes/client/commande.route'));
 app.use('/api/v1/avis', require('./routes/client/avis.route'));
@@ -71,24 +53,19 @@ app.use('/api/v1/profile', require('./routes/client/profil.route'));
 app.use('/api/v1/bannieres', require('./routes/client/banniere.route'));
 app.use('/api/v1/promotions', require('./routes/client/promotion.route'));
 app.use('/api/v1/frais-livraisons', require('./routes/client/frais-livraison.route'));
+app.use('/api/v1/favoris', require('./routes/client/favori.route'));
+app.use('/api/v1/boutiques', require('./routes/client/boutique.route'));
 
-// ── Rétrocompatibilité : redirige /api/* → /api/v1/* ─────────────────────────
-// ⚠️ Ne PAS rediriger /api/v1/* : req.url vaut déjà "/v1/…" à ce niveau, donc
-// le rediriger produirait "/api/v1/v1/…" → boucle de redirection infinie.
-// Une route /api/v1/* inconnue doit simplement tomber sur le 404 ci-dessous.
+// Évite la boucle /api/v1/v1/…
 app.use('/api', (req, res, next) => {
-  if (req.url === '/v1' || req.url.startsWith('/v1/')) {
-    return next();
-  }
+  if (req.url === '/v1' || req.url.startsWith('/v1/')) return next();
   return res.redirect(301, `/api/v1${req.url}`);
 });
 
-// ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route introuvable', path: _req.path });
 });
 
-// ── Global Error Handler ──────────────────────────────────────────────────────
 app.use(errorMiddleware);
 
 module.exports = app;

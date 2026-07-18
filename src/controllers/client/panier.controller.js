@@ -3,105 +3,86 @@
  * Gère le shopping cart utilisateur
  */
 const PanierService = require('../../services/client/panier.service');
-const ApiResponse = require('../../utils/ApiResponse');
-const logger = require('../../config/logger');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok } = require('../../utils/response');
+const { BadRequestError, NotFoundError } = require('../../errors/AppError');
 
 /**
  * GET /api/panier (protégé)
  * Récupérer le panier de l'utilisateur avec calculs
  */
-exports.getPanier = async (req, res) => {
-  try {
-    const result = await PanierService.getPanier(req.user.id);
-    return ApiResponse.success(200, res, 'Panier récupéré', {
+exports.getPanier = asyncHandler(async (req, res) => {
+  const result = await PanierService.getPanier(req.user.id);
+  return ok(
+    res,
+    {
       items: result.items,
       sousTotal: result.sousTotal,
       fraisLivraison: result.fraisLivraison,
       total: result.total,
-    });
-  } catch (err) {
-    logger.error('Erreur getPanier', { error: err.message });
-    return ApiResponse.internalServerError(res);
-  }
-};
+    },
+    'Panier récupéré'
+  );
+});
 
 /**
  * POST /api/panier (protégé)
  * Ajouter un produit au panier
  */
-exports.ajouter = async (req, res) => {
+exports.ajouter = asyncHandler(async (req, res) => {
   const { produitId, quantite } = req.body;
-
-  try {
-    const result = await PanierService.ajouterAuPanier(req.user.id, produitId, quantite);
-    if (!result.success) {
-      return ApiResponse.badRequest(res, result.message);
-    }
-    return ApiResponse.success(200, res, result.message, {
+  const result = await PanierService.ajouterAuPanier(req.user.id, produitId, quantite);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(
+    res,
+    {
       items: result.items,
       sousTotal: result.sousTotal,
       fraisLivraison: result.fraisLivraison,
       total: result.total,
-    });
-  } catch (err) {
-    logger.error('Erreur ajouter panier', { error: err.message });
-    return ApiResponse.internalServerError(res);
-  }
-};
+    },
+    result.message
+  );
+});
 
 /**
  * PATCH /api/panier/:produitId (protégé)
  * Modifier la quantité d'un produit
  */
-exports.modifier = async (req, res) => {
-  try {
-    const result = await PanierService.modifierQuantite(
-      req.user.id,
-      req.params.produitId,
-      req.body.quantite
-    );
-    if (!result.success) {
-      return ApiResponse.badRequest(res, result.message);
-    }
-    return ApiResponse.success(200, res, result.message, {
+exports.modifier = asyncHandler(async (req, res) => {
+  const result = await PanierService.modifierQuantite(
+    req.user.id,
+    req.params.produitId,
+    req.body.quantite
+  );
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(
+    res,
+    {
       items: result.items,
       sousTotal: result.sousTotal,
       fraisLivraison: result.fraisLivraison,
       total: result.total,
-    });
-  } catch (err) {
-    logger.error('Erreur modifier panier', { error: err.message });
-    return ApiResponse.internalServerError(res);
-  }
-};
+    },
+    result.message
+  );
+});
 
 /**
  * DELETE /api/panier/:produitId (protégé)
  * Retirer un produit du panier
  */
-exports.retirer = async (req, res) => {
-  try {
-    const result = await PanierService.retirerDuPanier(req.user.id, req.params.produitId);
-    if (!result.success) {
-      return ApiResponse.notFound(res, result.message);
-    }
-    return ApiResponse.success(200, res, result.message);
-  } catch (err) {
-    logger.error('Erreur retirer panier', { error: err.message });
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.retirer = asyncHandler(async (req, res) => {
+  const result = await PanierService.retirerDuPanier(req.user.id, req.params.produitId);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, {}, result.message);
+});
 
 /**
  * DELETE /api/panier (protégé)
  * Vider complètement le panier
  */
-exports.vider = async (req, res) => {
-  try {
-    const result = await PanierService.viderPanier(req.user.id);
-    return ApiResponse.success(200, res, result.message);
-  } catch (err) {
-    logger.error('Erreur vider panier', { error: err.message });
-    return ApiResponse.internalServerError(res);
-  }
-};
+exports.vider = asyncHandler(async (req, res) => {
+  const result = await PanierService.viderPanier(req.user.id);
+  return ok(res, {}, result.message);
+});

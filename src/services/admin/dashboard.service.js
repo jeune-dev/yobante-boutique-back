@@ -1,11 +1,28 @@
 const { Op, fn, col, literal } = require('sequelize');
-const { User, Produit, Commande, CommandeItem, ProfilVendeur, sequelize } = require('../../models');
+const {
+  User,
+  Produit,
+  Commande,
+  CommandeItem,
+  ProfilVendeur,
+  Categorie,
+  sequelize,
+} = require('../../models');
 const { ROLES } = require('../../constants');
 
 class DashboardService {
   static async getStatsGlobales() {
-    const [totalClients, totalProduits, totalCommandes, chiffreAffaires] = await Promise.all([
+    const [
+      totalClients,
+      totalVendeurs,
+      totalCategories,
+      totalProduits,
+      totalCommandes,
+      chiffreAffaires,
+    ] = await Promise.all([
       User.count({ where: { role: ROLES.CLIENT } }),
+      User.count({ where: { role: ROLES.VENDEUR } }),
+      Categorie.count({ where: { isActive: true } }),
       Produit.count({ where: { isActive: true } }),
       Commande.count(),
       Commande.sum('montantTotal', { where: { statut: 'livree' } }),
@@ -14,6 +31,8 @@ class DashboardService {
     return {
       success: true,
       totalClients,
+      totalVendeurs,
+      totalCategories,
       totalProduits,
       totalCommandes,
       chiffreAffaires: chiffreAffaires || 0,
@@ -179,11 +198,17 @@ class DashboardService {
     const kpi = kpiRow[0];
     const total = Number(kpi.totalProduits);
 
+    const produitsEnAttente = await Produit.count({
+      where: { statutValidation: 'en_attente', isActive: true },
+    });
+
     return {
       success: true,
       kpi: {
         totalProduits: total,
-        enRupture: Number(kpi.enRupture),
+        produitsActifs: total,
+        produitsEnRupture: Number(kpi.enRupture),
+        produitsEnAttente,
         stockFaible: Number(kpi.stockFaible),
         stockOk: Number(kpi.stockOk),
         tauxRupture: total ? ((Number(kpi.enRupture) / total) * 100).toFixed(1) : 0,

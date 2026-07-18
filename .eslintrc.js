@@ -21,4 +21,10 @@ module.exports = {
     'require-await': 'error',
   },
   ignorePatterns: ['node_modules/', 'coverage/', 'dist/'],
+  overrides: [
+    {
+      files: ['**/*.test.js', '**/*.spec.js', 'tests/**/*.js'],
+      env: { jest: true },
+    },
+  ],
 };

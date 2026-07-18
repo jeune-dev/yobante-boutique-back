@@ -1,84 +1,51 @@
 const GestionVendeurService = require('../../services/admin/vendeur.service');
-const ApiResponse = require('../../utils/ApiResponse');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok, created } = require('../../utils/response');
+const { BadRequestError, NotFoundError } = require('../../errors/AppError');
 
-exports.creerVendeur = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.creerVendeur(req.body, req.user.id);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(201, res, result.message, {
-      user: result.user,
-      profil: result.profil,
-    });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.creerVendeur = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.creerVendeur(req.body, req.user.id);
+  if (!result.success) throw new BadRequestError(result.message);
+  return created(res, { user: result.user, profil: result.profil }, result.message);
+});
 
-exports.listerVendeurs = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.listerVendeurs(req.query);
-    return ApiResponse.success(200, res, 'Liste des vendeurs', result);
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.listerVendeurs = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.listerVendeurs(req.query);
+  return ok(res, result, 'Liste des vendeurs');
+});
 
-exports.getVendeur = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.getVendeur(req.params.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, 'Vendeur', { vendeur: result.vendeur });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getVendeur = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.getVendeur(req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { vendeur: result.vendeur }, 'Vendeur');
+});
 
-exports.validerStep1 = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.validerStep1(req.params.id, req.user.id);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message, { profil: result.profil });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.validerStep1 = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.validerStep1(req.params.id, req.user.id);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { profil: result.profil }, result.message);
+});
 
-exports.validerStep2 = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.validerStep2(req.params.id, req.user.id);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message, { profil: result.profil });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.validerStep2 = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.validerStep2(req.params.id, req.user.id);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { profil: result.profil }, result.message);
+});
 
-exports.rejeterVendeur = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.rejeterVendeur(req.params.id, req.body.motif);
-    if (!result.success) return ApiResponse.badRequest(res, result.message);
-    return ApiResponse.success(200, res, result.message, { profil: result.profil });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.rejeterVendeur = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.rejeterVendeur(req.params.id, req.body.motif);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { profil: result.profil }, result.message);
+});
 
-exports.toggleActivation = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.toggleActivation(req.params.id);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, result.message, { user: result.user });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.toggleActivation = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.toggleActivation(req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { user: result.user }, result.message);
+});
 
-exports.updateProfil = async (req, res) => {
-  try {
-    const result = await GestionVendeurService.updateProfil(req.params.id, req.body);
-    if (!result.success) return ApiResponse.notFound(res, result.message);
-    return ApiResponse.success(200, res, result.message, { profil: result.profil });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.updateProfil = asyncHandler(async (req, res) => {
+  const result = await GestionVendeurService.updateProfil(req.params.id, req.body);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(res, { profil: result.profil }, result.message);
+});

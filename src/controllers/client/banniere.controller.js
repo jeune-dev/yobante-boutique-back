@@ -1,11 +1,8 @@
 const BanniereClientService = require('../../services/client/banniere.service');
-const ApiResponse = require('../../utils/ApiResponse');
+const asyncHandler = require('../../utils/asyncHandler');
+const { ok } = require('../../utils/response');
 
-exports.getActives = async (req, res) => {
-  try {
-    const result = await BanniereClientService.getActives();
-    return ApiResponse.success(200, res, 'Bannières', { bannieres: result.bannieres });
-  } catch (err) {
-    return ApiResponse.internalServerError(res, err.message);
-  }
-};
+exports.getActives = asyncHandler(async (req, res) => {
+  const result = await BanniereClientService.getActives();
+  return ok(res, { bannieres: result.bannieres }, 'Bannières');
+});
