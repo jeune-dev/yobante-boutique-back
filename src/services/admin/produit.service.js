@@ -89,6 +89,7 @@ class GestionProduitService {
     page,
     limit,
     categorieId,
+    rayonId,
     isActive,
     isFeatured,
     prixMin,
@@ -99,6 +100,7 @@ class GestionProduitService {
 
     const where = {};
     if (categorieId) where.categorieId = categorieId;
+    if (rayonId) where.rayonId = rayonId;
     if (isActive !== undefined) where.isActive = isActive === 'true' || isActive === true;
     if (isFeatured !== undefined) where.isFeatured = isFeatured === 'true' || isFeatured === true;
     if (prixMin || prixMax) {
