@@ -2,6 +2,7 @@
 
 const { Commande, Paiement, sequelize } = require('../../models');
 const { resoudreFournisseur } = require('../paiement');
+const NotificationService = require('../notification');
 const logger = require('../../config/logger');
 const { STATUT_PAIEMENT, STATUT_COMMANDE } = require('../../constants');
 
@@ -144,6 +145,17 @@ class PaiementClientService {
     });
 
     await paiement.reload();
+
+    await NotificationService.emettre({
+      userId: paiement.userId,
+      titre: succes ? 'Paiement confirmé' : 'Paiement refusé',
+      message: succes
+        ? `Votre règlement de ${paiement.montant} FCFA a bien été reçu.`
+        : 'Votre règlement n’a pas abouti. Vous pouvez réessayer depuis la commande.',
+      type: 'paiement',
+      donnees: { commandeId: paiement.commandeId },
+    });
+
     return {
       success: true,
       message: succes ? 'Paiement confirmé' : 'Paiement refusé',

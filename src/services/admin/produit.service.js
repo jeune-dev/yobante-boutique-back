@@ -4,6 +4,7 @@ const { generateUniqueSlug } = require('../../utils/slugify');
 const paginate = require('../../utils/paginate');
 const { uploadImage, deleteImage } = require('../upload.service');
 const { STATUT_VALIDATION_PRODUIT } = require('../../constants');
+const NotificationService = require('../notification');
 
 class GestionProduitService {
   static async createProduit(data, files = []) {
@@ -179,6 +180,15 @@ class GestionProduitService {
     }
 
     const produit = await Produit.findByPk(id);
+
+    await NotificationService.emettre({
+      userId: produit.vendeurId,
+      titre: 'Demande acceptée',
+      message: `« ${produit.nom} » est publié sur le catalogue.`,
+      type: 'produit',
+      donnees: { produitId: produit.id },
+    });
+
     return { success: true, message: 'Produit validé et publié sur le catalogue', produit };
   }
 
@@ -196,6 +206,15 @@ class GestionProduitService {
     );
     if (nbRows === 0) return { success: false, message: 'Produit introuvable' };
     const produit = await Produit.findByPk(id);
+
+    await NotificationService.emettre({
+      userId: produit.vendeurId,
+      titre: 'Demande rejetée',
+      message: motif ? `« ${produit.nom} » : ${motif}` : `« ${produit.nom} » n’a pas été retenu.`,
+      type: 'produit',
+      donnees: { produitId: produit.id },
+    });
+
     return { success: true, message: `Produit rejeté${motif ? ` : ${motif}` : ''}`, produit };
   }
 

@@ -15,6 +15,7 @@ const { sousTotal: calcSousTotal, round2 } = require('../../utils/money');
 const paginate = require('../../utils/paginate');
 const { sendCommandeConfirmation } = require('../../utils/mailer');
 const { acquire, release } = require('../../utils/advisoryLock');
+const NotificationService = require('../notification');
 
 function _genererReference() {
   return `CMD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -126,6 +127,17 @@ class CommandeService {
 
         const user = await User.findByPk(userId, { attributes: ['email'] });
         if (user) await sendCommandeConfirmation(user.email, commandeComplete);
+
+        // Les vendeurs concernés sont prévenus qu'une commande porte sur leurs
+        // produits. Émission « au mieux » : la commande est déjà validée, une
+        // notification en échec ne doit pas la remettre en cause.
+        await NotificationService.emettre({
+          userIds: commandeComplete.items.map((i) => i.produit?.vendeurId),
+          titre: 'Nouvelle commande',
+          message: `La commande ${commandeComplete.reference} contient vos produits.`,
+          type: 'commande',
+          donnees: { commandeId: commandeComplete.id },
+        });
 
         return {
           success: true,

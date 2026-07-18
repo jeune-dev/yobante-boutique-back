@@ -50,6 +50,8 @@ app.use('/api/v1/categories', require('./routes/client/categorie.route'));
 app.use('/api/v1/panier', require('./routes/client/panier.route'));
 app.use('/api/v1/commandes', require('./routes/client/commande.route'));
 app.use('/api/v1/paiements', require('./routes/client/paiement.route'));
+app.use('/api/v1/notifications', require('./routes/client/notification.route'));
+app.use('/api/v1/device-token', require('./routes/client/deviceToken.route'));
 app.use('/api/v1/avis', require('./routes/client/avis.route'));
 app.use('/api/v1/profile', require('./routes/client/profil.route'));
 app.use('/api/v1/bannieres', require('./routes/client/banniere.route'));

@@ -20,6 +20,8 @@ const Promotion = require('./Promotion.model');
 const FraisLivraison = require('./FraisLivraison.model');
 const Favori = require('./Favori.model');
 const BlocPromo = require('./BlocPromo.model');
+const Notification = require('./Notification.model');
+const DeviceToken = require('./DeviceToken.model');
 
 // ── User associations ──────────────────────────────────────────
 User.hasMany(Commande, { foreignKey: 'userId', as: 'commandes', onDelete: 'CASCADE' });
@@ -101,6 +103,12 @@ Banniere.belongsTo(Categorie, { foreignKey: 'categorieId', as: 'categorie' });
 // ── Promotion associations ─────────────────────────────────────
 Promotion.belongsTo(Produit, { foreignKey: 'produitId', as: 'produit' });
 
+// ── Notification associations ──────────────────────────────────
+User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications', onDelete: 'CASCADE' });
+Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(DeviceToken, { foreignKey: 'userId', as: 'appareils', onDelete: 'CASCADE' });
+DeviceToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 // ── Export all models ──────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -121,4 +129,6 @@ module.exports = {
   FraisLivraison,
   Favori,
   BlocPromo,
+  Notification,
+  DeviceToken,
 };
