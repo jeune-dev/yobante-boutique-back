@@ -46,6 +46,7 @@ app.use('/api/v1/auth', require('./routes/auth.routes'));
 app.use('/api/v1/admin', require('./routes/admin/index'));
 app.use('/api/v1/vendeur', require('./routes/vendeur/index'));
 app.use('/api/v1/produits', require('./routes/client/produit.route'));
+app.use('/api/v1/categories', require('./routes/client/categorie.route'));
 app.use('/api/v1/panier', require('./routes/client/panier.route'));
 app.use('/api/v1/commandes', require('./routes/client/commande.route'));
 app.use('/api/v1/avis', require('./routes/client/avis.route'));
