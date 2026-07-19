@@ -35,9 +35,10 @@ const updateProduitSchema = Joi.object({
   images: Joi.array().items(Joi.string().trim()).optional(),
   categorieId: Joi.string().uuid().optional(),
   // Facultatifs en modification : on ne réimpose pas le rangement à chaque
-  // édition partielle, mais on refuse de les vider.
-  rayonId: Joi.string().uuid().optional(),
-  sousRayonId: Joi.string().uuid().optional(),
+  // édition partielle. `null` est accepté afin de pouvoir retirer un produit
+  // d'un rayon ou d'un sous-rayon depuis l'écran de rangement.
+  rayonId: Joi.string().uuid().allow(null).optional(),
+  sousRayonId: Joi.string().uuid().allow(null).optional(),
   poids: Joi.number().min(0).allow(null).optional(),
   reference: Joi.string().trim().allow('', null).optional(),
   isFeatured: Joi.boolean().optional(),

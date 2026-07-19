@@ -16,43 +16,7 @@ require('dotenv').config();
 const sequelize = require('../config/db');
 const { Rayon, SousRayon } = require('../models');
 const logger = require('../config/logger');
-
-/** Reprend l'ordre d'affichage de l'accueil mobile. */
-const RAYONS = [
-  { nom: 'Bébé', sousRayons: ['Couches', 'Laits infantiles', 'Petits pots', 'Soins bébé'] },
-  { nom: 'Dépannage', sousRayons: ['Piles', 'Ampoules', 'Petit outillage', 'Adaptateurs'] },
-  {
-    nom: 'Petfood & Animalerie',
-    sousRayons: ['Croquettes chien', 'Croquettes chat', 'Litière', 'Accessoires'],
-  },
-  { nom: 'Boissons', sousRayons: ['Eaux', 'Sodas', 'Jus de fruits', 'Boissons chaudes'] },
-  { nom: "Petit-déj'", sousRayons: ['Céréales', 'Confitures', 'Biscottes', 'Café & thé'] },
-  { nom: 'Boulangerie', sousRayons: ['Pains', 'Viennoiseries', 'Pâtisseries'] },
-  {
-    nom: 'Huiles, Sauces & Épices',
-    sousRayons: ['Huiles', 'Vinaigres', 'Sauces', 'Épices & condiments'],
-  },
-  {
-    nom: 'Pâtes, Riz & Céréales',
-    sousRayons: ['Riz', 'Pâtes', 'Semoule & couscous', 'Légumes secs'],
-  },
-  { nom: 'Frais & Surgelés', sousRayons: ['Produits laitiers', 'Viandes', 'Poissons', 'Surgelés'] },
-  { nom: 'Fruits & Légumes', sousRayons: ['Fruits frais', 'Légumes frais', 'Herbes aromatiques'] },
-  { nom: 'Snacking', sousRayons: ['Biscuits', 'Chips & apéritif', 'Confiseries', 'Chocolats'] },
-  {
-    nom: 'Conserves',
-    sousRayons: ['Légumes en conserve', 'Poissons en conserve', 'Plats cuisinés'],
-  },
-  {
-    nom: 'Entretien Maison',
-    sousRayons: ['Lessive', 'Vaisselle', 'Nettoyants', 'Papier & essuie-tout'],
-  },
-  {
-    nom: 'Hygiène & Beauté',
-    sousRayons: ['Soins du corps', 'Soins du visage', 'Cheveux', 'Hygiène dentaire'],
-  },
-  { nom: 'Adulte', sousRayons: ['Protection', 'Bien-être'] },
-];
+const { RAYONS } = require('./rayons.data');
 
 /** Slug simple et stable : c'est la clé d'idempotence du script. */
 function slugifier(texte) {

@@ -83,12 +83,14 @@ class GestionProduitService {
       if (!categorie) return { success: false, message: 'Catégorie introuvable' };
     }
 
-    if (data.rayonId || data.sousRayonId) {
+    if ('rayonId' in data || 'sousRayonId' in data) {
       // Une édition peut ne toucher qu'un des deux champs : on complète avec la
       // valeur déjà enregistrée pour comparer la paire réellement obtenue.
+      // `in` plutôt que `??` : envoyer null vide volontairement le champ, et
+      // `??` serait retombé sur l'ancienne valeur.
       const erreurRangement = await GestionProduitService._verifierRangement(
-        data.rayonId ?? produit.rayonId,
-        data.sousRayonId ?? produit.sousRayonId
+        'rayonId' in data ? data.rayonId : produit.rayonId,
+        'sousRayonId' in data ? data.sousRayonId : produit.sousRayonId
       );
       if (erreurRangement) return { success: false, message: erreurRangement };
     }
