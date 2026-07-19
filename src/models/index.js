@@ -106,6 +106,16 @@ Banniere.belongsTo(Categorie, { foreignKey: 'categorieId', as: 'categorie' });
 // ── Promotion associations ─────────────────────────────────────
 Promotion.belongsTo(Produit, { foreignKey: 'produitId', as: 'produit' });
 
+// Une sous-section d'accueil porte ses propres produits en promotion.
+// onDelete SET NULL : supprimer une sous-section ne doit pas faire disparaître
+// la promotion, qui reste valable au niveau de sa section.
+BlocPromo.hasMany(Promotion, {
+  foreignKey: 'blocPromoId',
+  as: 'promotions',
+  onDelete: 'SET NULL',
+});
+Promotion.belongsTo(BlocPromo, { foreignKey: 'blocPromoId', as: 'blocPromo' });
+
 // ── Notification associations ──────────────────────────────────
 User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications', onDelete: 'CASCADE' });
 Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });

@@ -5,6 +5,8 @@ const ctrl = require('../../controllers/admin/promotion.controller');
 router.use(adminMiddleware);
 
 router.get('/sections', ctrl.getParSection);
+// Déclaré avant '/:id' pour ne pas être pris pour un identifiant.
+router.post('/reordonner', ctrl.reordonner);
 router.get('/', ctrl.getAll);
 router.post('/', ctrl.create);
 router.get('/:id', ctrl.getById);

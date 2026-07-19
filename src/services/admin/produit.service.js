@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Produit, Categorie, User } = require('../../models');
+const { Produit, Categorie, User, Rayon, SousRayon, ProfilVendeur } = require('../../models');
 
 async function _sendProduitEmail(vendeurId, sujet, html) {
   try {
@@ -24,9 +24,41 @@ const { STATUT_VALIDATION_PRODUIT } = require('../../constants');
 const NotificationService = require('../notification');
 
 class GestionProduitService {
+  /**
+   * Vérifie que le sous-rayon existe et relève bien du rayon annoncé.
+   *
+   * Le formulaire envoie les deux identifiants séparément : sans ce contrôle,
+   * un appel forgé (ou un rayon changé après coup dans l'interface) rangerait
+   * le produit sous un sous-rayon étranger à son rayon.
+   */
+  static async _verifierRangement(rayonId, sousRayonId) {
+    if (!rayonId && !sousRayonId) return null;
+
+    if (rayonId) {
+      const rayon = await Rayon.findByPk(rayonId);
+      if (!rayon) return 'Rayon introuvable';
+    }
+
+    if (sousRayonId) {
+      const sousRayon = await SousRayon.findByPk(sousRayonId);
+      if (!sousRayon) return 'Sous-rayon introuvable';
+      if (rayonId && sousRayon.rayonId !== rayonId) {
+        return "Ce sous-rayon n'appartient pas au rayon choisi";
+      }
+    }
+
+    return null;
+  }
+
   static async createProduit(data, files = []) {
     const categorie = await Categorie.findByPk(data.categorieId);
     if (!categorie) return { success: false, message: 'Catégorie introuvable' };
+
+    const erreurRangement = await GestionProduitService._verifierRangement(
+      data.rayonId,
+      data.sousRayonId
+    );
+    if (erreurRangement) return { success: false, message: erreurRangement };
 
     const slug = await generateUniqueSlug(Produit, data.nom);
     const updates = { ...data, slug };
@@ -49,6 +81,16 @@ class GestionProduitService {
     if (data.categorieId) {
       const categorie = await Categorie.findByPk(data.categorieId);
       if (!categorie) return { success: false, message: 'Catégorie introuvable' };
+    }
+
+    if (data.rayonId || data.sousRayonId) {
+      // Une édition peut ne toucher qu'un des deux champs : on complète avec la
+      // valeur déjà enregistrée pour comparer la paire réellement obtenue.
+      const erreurRangement = await GestionProduitService._verifierRangement(
+        data.rayonId ?? produit.rayonId,
+        data.sousRayonId ?? produit.sousRayonId
+      );
+      if (erreurRangement) return { success: false, message: erreurRangement };
     }
 
     const updates = { ...data };
@@ -80,7 +122,27 @@ class GestionProduitService {
 
   static async getProduitById(id) {
     const produit = await Produit.findByPk(id, {
-      include: [{ model: Categorie, as: 'categorie' }],
+      include: [
+        { model: Categorie, as: 'categorie' },
+        { model: Rayon, as: 'rayon', attributes: ['id', 'nom'], required: false },
+        { model: SousRayon, as: 'sousRayon', attributes: ['id', 'nom'], required: false },
+        // La fiche sert à instruire une demande de publication : l'admin doit
+        // voir qui la soumet.
+        {
+          model: User,
+          as: 'vendeur',
+          attributes: ['id', 'nom', 'prenom', 'email', 'telephone'],
+          required: false,
+          include: [
+            {
+              model: ProfilVendeur,
+              as: 'profilVendeur',
+              attributes: ['nomBoutique', 'logo'],
+              required: false,
+            },
+          ],
+        },
+      ],
     });
     if (!produit) return { success: false, message: 'Produit introuvable' };
     return { success: true, produit };
@@ -91,6 +153,9 @@ class GestionProduitService {
     limit,
     categorieId,
     rayonId,
+    sousRayonId,
+    statutValidation,
+    vendeurId,
     isActive,
     isFeatured,
     prixMin,
@@ -102,6 +167,11 @@ class GestionProduitService {
     const where = {};
     if (categorieId) where.categorieId = categorieId;
     if (rayonId) where.rayonId = rayonId;
+    if (sousRayonId) where.sousRayonId = sousRayonId;
+    // Sans ce filtre, l'écran des demandes de publication listait tout le
+    // catalogue : le paramètre était accepté par la route puis ignoré ici.
+    if (statutValidation) where.statutValidation = statutValidation;
+    if (vendeurId) where.vendeurId = vendeurId;
     if (isActive !== undefined) where.isActive = isActive === 'true' || isActive === true;
     if (isFeatured !== undefined) where.isFeatured = isFeatured === 'true' || isFeatured === true;
     if (prixMin || prixMax) {
@@ -118,7 +188,25 @@ class GestionProduitService {
 
     const { count, rows } = await Produit.findAndCountAll({
       where,
-      include: [{ model: Categorie, as: 'categorie' }],
+      include: [
+        { model: Categorie, as: 'categorie' },
+        // L'écran des demandes affiche qui a soumis le produit. Le nom de la
+        // boutique vit sur le profil vendeur, pas sur le compte.
+        {
+          model: User,
+          as: 'vendeur',
+          attributes: ['id', 'nom', 'prenom', 'email', 'telephone'],
+          required: false,
+          include: [
+            {
+              model: ProfilVendeur,
+              as: 'profilVendeur',
+              attributes: ['nomBoutique', 'logo'],
+              required: false,
+            },
+          ],
+        },
+      ],
       order: [['createdAt', 'DESC']],
       limit: l,
       offset,

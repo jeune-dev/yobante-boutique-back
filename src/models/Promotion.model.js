@@ -14,6 +14,13 @@ const Promotion = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    blocPromoId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      comment:
+        "Sous-section d'accueil à laquelle la promotion est rattachée. " +
+        'Nulle : la promotion reste au niveau de la section.',
+    },
     section: {
       type: DataTypes.ENUM('nos_promos_du_moment', 'a_ne_pas_rater', 'nos_promos_a_venir'),
       allowNull: false,

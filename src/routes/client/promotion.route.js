@@ -10,6 +10,8 @@ router.get('/groupees', ctrl.getGroupees);
 // Le contrôleur existait déjà mais n'était rattaché à aucune route : l'appel
 // tombait sur '/:section' et repartait en 400.
 router.get('/blocs', ctrl.getBlocs);
+// Déclaré avant '/:section' pour ne pas être capturé comme une section.
+router.get('/blocs/:id/produits', ctrl.getProduitsDuBloc);
 router.get('/:section', ctrl.getSection);
 
 module.exports = router;

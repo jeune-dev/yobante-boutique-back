@@ -22,6 +22,44 @@ class PromotionClientService {
     return { success: true, blocs };
   }
 
+  /**
+   * Produits en promotion d'une sous-section.
+   *
+   * Une promotion dont la période est passée disparaît d'elle-même : c'est la
+   * durée choisie par l'administration qui pilote l'affichage, sans qu'aucune
+   * tâche n'ait à la désactiver.
+   */
+  static async getProduitsDuBloc(blocPromoId) {
+    const bloc = await BlocPromo.findByPk(blocPromoId);
+    if (!bloc || !bloc.isActive) {
+      return { success: false, message: 'Sous-section introuvable' };
+    }
+
+    const now = new Date();
+    const promotions = await Promotion.findAll({
+      where: {
+        blocPromoId,
+        isActive: true,
+        [Op.and]: [
+          { [Op.or]: [{ dateDebut: null }, { dateDebut: { [Op.lte]: now } }] },
+          { [Op.or]: [{ dateFin: null }, { dateFin: { [Op.gte]: now } }] },
+        ],
+      },
+      include: [
+        {
+          model: Produit,
+          as: 'produit',
+          where: { isActive: true },
+          required: true,
+          include: [{ model: Categorie, as: 'categorie', attributes: ['id', 'nom', 'slug'] }],
+        },
+      ],
+      order: [['ordre', 'ASC']],
+    });
+
+    return { success: true, bloc, promotions };
+  }
+
   /** Retourne les 3 sections promotionnelles pour la page Promotions de l'app */
   static async getSections() {
     const now = new Date();

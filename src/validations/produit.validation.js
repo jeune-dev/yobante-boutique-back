@@ -11,6 +11,16 @@ const createProduitSchema = Joi.object({
   stock: Joi.number().integer().min(0).default(0),
   images: Joi.array().items(Joi.string().trim()).optional(),
   categorieId: Joi.string().uuid().required(),
+  // Le rangement en rayon commande la navigation de l'accueil mobile : un
+  // produit sans rayon n'y apparaît nulle part, d'où l'obligation à la création.
+  rayonId: Joi.string().uuid().required().messages({
+    'any.required': 'Le rayon est obligatoire',
+    'string.guid': 'Rayon invalide',
+  }),
+  sousRayonId: Joi.string().uuid().required().messages({
+    'any.required': 'Le sous-rayon est obligatoire',
+    'string.guid': 'Sous-rayon invalide',
+  }),
   poids: Joi.number().min(0).allow(null).optional(),
   reference: Joi.string().trim().allow('', null).optional(),
   isFeatured: Joi.boolean().optional(),
@@ -24,6 +34,10 @@ const updateProduitSchema = Joi.object({
   stock: Joi.number().integer().min(0).optional(),
   images: Joi.array().items(Joi.string().trim()).optional(),
   categorieId: Joi.string().uuid().optional(),
+  // Facultatifs en modification : on ne réimpose pas le rangement à chaque
+  // édition partielle, mais on refuse de les vider.
+  rayonId: Joi.string().uuid().optional(),
+  sousRayonId: Joi.string().uuid().optional(),
   poids: Joi.number().min(0).allow(null).optional(),
   reference: Joi.string().trim().allow('', null).optional(),
   isFeatured: Joi.boolean().optional(),

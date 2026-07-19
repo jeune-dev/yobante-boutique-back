@@ -8,6 +8,13 @@ exports.getAll = asyncHandler(async (req, res) => {
   return ok(res, result, 'Liste des promotions');
 });
 
+/** POST /api/v1/admin/promotions/reordonner */
+exports.reordonner = asyncHandler(async (req, res) => {
+  const result = await PromotionService.reordonner(req.body.elements);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, {}, result.message);
+});
+
 exports.getById = asyncHandler(async (req, res) => {
   const result = await PromotionService.getById(req.params.id);
   if (!result.success) throw new NotFoundError(result.message);

@@ -31,6 +31,10 @@ class RayonService {
       order: [['nom', 'ASC']],
       limit: l,
       offset,
+      // Sans cela, le compte porte sur les lignes jointes : 15 rayons ayant
+      // 55 sous-rayons étaient annoncés comme 55 résultats, d'où une
+      // pagination fantôme dans le dashboard.
+      distinct: true,
     });
     return {
       success: true,

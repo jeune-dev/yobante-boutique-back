@@ -1,7 +1,7 @@
 const PromotionClientService = require('../../services/client/promotion.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const { ok } = require('../../utils/response');
-const { BadRequestError } = require('../../errors/AppError');
+const { BadRequestError, NotFoundError } = require('../../errors/AppError');
 
 exports.getSections = asyncHandler(async (req, res) => {
   const result = await PromotionClientService.getSections();
@@ -21,6 +21,17 @@ exports.getActives = asyncHandler(async (req, res) => {
 exports.getBlocs = asyncHandler(async (req, res) => {
   const result = await PromotionClientService.getBlocs();
   return ok(res, { blocs: result.blocs }, 'Blocs promo');
+});
+
+/** Produits d'une sous-section, les promotions expirées étant déjà écartées. */
+exports.getProduitsDuBloc = asyncHandler(async (req, res) => {
+  const result = await PromotionClientService.getProduitsDuBloc(req.params.id);
+  if (!result.success) throw new NotFoundError(result.message);
+  return ok(
+    res,
+    { bloc: result.bloc, promotions: result.promotions },
+    'Produits de la sous-section'
+  );
 });
 
 exports.getGroupees = asyncHandler(async (req, res) => {

@@ -11,7 +11,22 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      # Le déploiement VPS n'est pas toujours celui qui est utilisé : quand
+      # l'hébergement se fait ailleurs (Render, qui redéploie de lui-même au
+      # push), les secrets VPS_* ne sont pas renseignés et l'action échouait
+      # sur « missing server host » à chaque push. On saute proprement.
+      - name: Vérifier la configuration du VPS
+        id: config
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "configure=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Aucun VPS configuré (secret VPS_HOST absent) — déploiement SSH ignoré."
+          else
+            echo "configure=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy via SSH
+        if: steps.config.outputs.configure == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
