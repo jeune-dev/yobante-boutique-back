@@ -7,9 +7,16 @@
  * doublon éphémère, l'application doit pouvoir en afficher l'historique et
  * compter les non-lues sans dépendre de la couche push.
  */
+// Rejouable : `sequelize.sync()` peut avoir déjà créé ces tables.
+async function creerSiAbsente(queryInterface, nom, definition) {
+  const tables = await queryInterface.showAllTables();
+  const existe = tables.some((t) => (typeof t === 'string' ? t : t.tableName) === nom);
+  if (!existe) await queryInterface.createTable(nom, definition);
+}
+
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('notifications', {
+    await creerSiAbsente(queryInterface, 'notifications', {
       id: { type: Sequelize.UUID, defaultValue: Sequelize.UUIDV4, primaryKey: true },
       userId: {
         type: Sequelize.UUID,
@@ -27,14 +34,14 @@ module.exports = {
       updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.NOW },
     });
     // Le compteur de non-lues est la requête la plus fréquente de la cloche.
-    await queryInterface.addIndex('notifications', ['userId', 'lu'], {
-      name: 'notifications_user_lu_idx',
-    });
-    await queryInterface.addIndex('notifications', ['createdAt'], {
-      name: 'notifications_created_at_idx',
-    });
+    await queryInterface.sequelize.query(
+      'CREATE INDEX IF NOT EXISTS "notifications_user_lu_idx" ON "notifications" ("userId", "lu")'
+    );
+    await queryInterface.sequelize.query(
+      'CREATE INDEX IF NOT EXISTS "notifications_created_at_idx" ON "notifications" ("createdAt")'
+    );
 
-    await queryInterface.createTable('device_tokens', {
+    await creerSiAbsente(queryInterface, 'device_tokens', {
       id: { type: Sequelize.UUID, defaultValue: Sequelize.UUIDV4, primaryKey: true },
       userId: {
         type: Sequelize.UUID,
@@ -51,9 +58,9 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.NOW },
       updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.NOW },
     });
-    await queryInterface.addIndex('device_tokens', ['userId'], {
-      name: 'device_tokens_user_idx',
-    });
+    await queryInterface.sequelize.query(
+      'CREATE INDEX IF NOT EXISTS "device_tokens_user_idx" ON "device_tokens" ("userId")'
+    );
   },
 
   async down(queryInterface) {

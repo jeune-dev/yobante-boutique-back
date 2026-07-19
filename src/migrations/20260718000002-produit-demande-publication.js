@@ -8,13 +8,20 @@
  *                    réponse HTTP et donc perdue — le vendeur ne pouvait pas
  *                    savoir ce qu'on lui reprochait.
  */
+// Rejouable : `sequelize.sync()` peut avoir déjà créé ces colonnes sur les
+// environnements où il tourne.
+async function ajouterColonneSiAbsente(queryInterface, table, colonne, definition) {
+  const description = await queryInterface.describeTable(table);
+  if (!description[colonne]) await queryInterface.addColumn(table, colonne, definition);
+}
+
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('produits', 'messageVendeur', {
+    await ajouterColonneSiAbsente(queryInterface, 'produits', 'messageVendeur', {
       type: Sequelize.TEXT,
       allowNull: true,
     });
-    await queryInterface.addColumn('produits', 'motifRejet', {
+    await ajouterColonneSiAbsente(queryInterface, 'produits', 'motifRejet', {
       type: Sequelize.TEXT,
       allowNull: true,
     });

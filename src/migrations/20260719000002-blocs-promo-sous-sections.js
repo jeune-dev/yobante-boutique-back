@@ -21,9 +21,9 @@ module.exports = {
       .query('DROP INDEX IF EXISTS "blocs_promo_section_key"')
       .catch(() => {});
 
-    await queryInterface.addIndex('blocs_promo', ['section', 'ordre'], {
-      name: 'blocs_promo_section_ordre_idx',
-    });
+    await queryInterface.sequelize.query(
+      'CREATE INDEX IF NOT EXISTS "blocs_promo_section_ordre_idx" ON "blocs_promo" ("section", "ordre")'
+    );
 
     // `titre` sert désormais de nom de sous-section : on le rend obligatoire
     // côté applicatif seulement, pour ne pas casser les lignes existantes.

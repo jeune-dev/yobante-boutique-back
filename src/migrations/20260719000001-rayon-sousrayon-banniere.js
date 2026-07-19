@@ -1,7 +1,30 @@
 'use strict';
+
+/**
+ * Rayons, sous-rayons et liaison bannière ↔ produit.
+ *
+ * Rendue rejouable : sur les environnements où `sequelize.sync()` tourne
+ * (NODE_ENV différent de production), les tables et colonnes peuvent déjà
+ * exister. Sans ces gardes, la migration échouerait et bloquerait le
+ * démarrage de l'application.
+ */
+
+/** Crée la table seulement si elle n'existe pas déjà. */
+async function creerSiAbsente(queryInterface, nom, definition) {
+  const tables = await queryInterface.showAllTables();
+  const existe = tables.some((t) => (typeof t === 'string' ? t : t.tableName) === nom);
+  if (!existe) await queryInterface.createTable(nom, definition);
+}
+
+/** Ajoute la colonne seulement si elle n'existe pas déjà. */
+async function ajouterColonneSiAbsente(queryInterface, table, colonne, definition) {
+  const description = await queryInterface.describeTable(table);
+  if (!description[colonne]) await queryInterface.addColumn(table, colonne, definition);
+}
+
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('rayons', {
+    await creerSiAbsente(queryInterface, 'rayons', {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('gen_random_uuid()'),
@@ -15,7 +38,7 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false },
       updatedAt: { type: Sequelize.DATE, allowNull: false },
     });
-    await queryInterface.createTable('sous_rayons', {
+    await creerSiAbsente(queryInterface, 'sous_rayons', {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('gen_random_uuid()'),
@@ -35,7 +58,7 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false },
       updatedAt: { type: Sequelize.DATE, allowNull: false },
     });
-    await queryInterface.createTable('banniere_produits', {
+    await creerSiAbsente(queryInterface, 'banniere_produits', {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('gen_random_uuid()'),
@@ -57,17 +80,17 @@ module.exports = {
       createdAt: { type: Sequelize.DATE, allowNull: false },
       updatedAt: { type: Sequelize.DATE, allowNull: false },
     });
-    await queryInterface.addColumn('produits', 'rayonId', {
+    await ajouterColonneSiAbsente(queryInterface, 'produits', 'rayonId', {
       type: Sequelize.UUID,
       allowNull: true,
       references: { model: 'rayons', key: 'id' },
     });
-    await queryInterface.addColumn('produits', 'sousRayonId', {
+    await ajouterColonneSiAbsente(queryInterface, 'produits', 'sousRayonId', {
       type: Sequelize.UUID,
       allowNull: true,
       references: { model: 'sous_rayons', key: 'id' },
     });
-    await queryInterface.addColumn('users', 'mustChangePassword', {
+    await ajouterColonneSiAbsente(queryInterface, 'users', 'mustChangePassword', {
       type: Sequelize.BOOLEAN,
       defaultValue: false,
       allowNull: false,
