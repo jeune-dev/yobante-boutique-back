@@ -14,6 +14,7 @@ const { User, Categorie, Produit, ProfilVendeur } = require('../src/models');
 const VendeurProduitService = require('../src/services/vendeur/produit.service');
 const AdminProduitService = require('../src/services/admin/produit.service');
 const { STATUT_VALIDATION_PRODUIT, ROLES } = require('../src/constants');
+const { nettoyerDonneesDeTest } = require('./_nettoyage');
 
 const SUFFIXE = `demande-${Date.now()}`;
 let echecs = 0;
@@ -106,12 +107,14 @@ async function main() {
   console.log(
     `\n${echecs === 0 ? 'Cycle de demande conforme.' : `${echecs} vérification(s) en échec.`}`
   );
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(echecs ? 1 : 0);
 }
 
 main().catch(async (err) => {
   console.error('Erreur :', err.message, '\n', err.stack);
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(1);
 });

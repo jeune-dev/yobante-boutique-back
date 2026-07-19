@@ -15,6 +15,7 @@ const app = require('../src/app');
 const { jwtConfig } = require('../src/config/security');
 const { User, Categorie, Produit, BlocPromo, Promotion } = require('../src/models');
 const { ROLES, SECTION_PROMOTION } = require('../src/constants');
+const { nettoyerDonneesDeTest } = require('./_nettoyage');
 
 const SUFFIXE = `accueil-${Date.now()}`;
 let echecs = 0;
@@ -64,7 +65,7 @@ async function main() {
 
   const bloc1 = await en('post', '/api/v1/admin/blocs-promo').send({
     section,
-    titre: 'Sous-section A',
+    titre: `Sous-section A ${SUFFIXE}`,
     sousTitre: 'Première',
   });
   verifier('création acceptée', bloc1.status, 201);
@@ -72,7 +73,7 @@ async function main() {
 
   const bloc2 = await en('post', '/api/v1/admin/blocs-promo').send({
     section,
-    titre: 'Sous-section B',
+    titre: `Sous-section B ${SUFFIXE}`,
   });
   verifier('deuxième sous-section', bloc2.status, 201);
   // La création place le bloc en fin de section, sans bousculer l'existant.
@@ -172,12 +173,14 @@ async function main() {
   console.log(
     `\n${echecs === 0 ? 'Gestion de l accueil conforme.' : `${echecs} vérification(s) en échec.`}`
   );
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(echecs ? 1 : 0);
 }
 
 main().catch(async (err) => {
   console.error('Erreur :', err.message, '\n', err.stack);
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(1);
 });

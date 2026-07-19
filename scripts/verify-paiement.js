@@ -27,6 +27,7 @@ const {
   Paiement,
 } = require('../src/models');
 const { ROLES, STATUT_COMMANDE, STATUT_PAIEMENT, METHODE_PAIEMENT } = require('../src/constants');
+const { nettoyerDonneesDeTest } = require('./_nettoyage');
 
 const SUFFIXE = `paie-${Date.now()}`;
 let echecs = 0;
@@ -213,12 +214,14 @@ async function main() {
   console.log(
     `\n${echecs === 0 ? 'Cycle de paiement conforme.' : `${echecs} vérification(s) en échec.`}`
   );
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(echecs ? 1 : 0);
 }
 
 main().catch(async (err) => {
   console.error('Erreur :', err.message, '\n', err.stack);
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(1);
 });

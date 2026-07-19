@@ -17,6 +17,7 @@ const app = require('../src/app');
 const { jwtConfig } = require('../src/config/security');
 const { User } = require('../src/models');
 const { ROLES } = require('../src/constants');
+const { nettoyerDonneesDeTest } = require('./_nettoyage');
 
 const SUFFIXE = `dash-${Date.now()}`;
 let echecs = 0;
@@ -99,12 +100,14 @@ async function main() {
   console.log(
     `\n${echecs === 0 ? 'Contrat dashboard conforme.' : `${echecs} écart(s) avec le dashboard.`}`
   );
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(echecs ? 1 : 0);
 }
 
 main().catch(async (err) => {
   console.error('Erreur :', err.message, '\n', err.stack);
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(1);
 });

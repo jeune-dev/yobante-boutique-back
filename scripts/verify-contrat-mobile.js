@@ -26,6 +26,7 @@ const {
   ProfilVendeur,
 } = require('../src/models');
 const { STATUT_COMMANDE, STATUT_VALIDATION_PRODUIT, ROLES } = require('../src/constants');
+const { nettoyerDonneesDeTest } = require('./_nettoyage');
 
 const SUFFIXE = `contrat-${Date.now()}`;
 let echecs = 0;
@@ -184,12 +185,14 @@ async function main() {
   console.log(
     `\n${echecs === 0 ? 'Contrat mobile conforme.' : `${echecs} écart(s) avec le contrat mobile.`}`
   );
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(echecs ? 1 : 0);
 }
 
 main().catch(async (err) => {
   console.error('Erreur :', err.message, '\n', err.stack);
+  await nettoyerDonneesDeTest(SUFFIXE);
   await sequelize.close();
   process.exit(1);
 });
