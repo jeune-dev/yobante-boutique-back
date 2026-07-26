@@ -252,7 +252,7 @@ class GestionProduitService {
    */
   static async validerProduitStep1(id) {
     const [nbRows] = await Produit.update(
-      { statutValidation: STATUT_VALIDATION_PRODUIT.VALIDE_STEP1 },
+      { statutValidation: STATUT_VALIDATION_PRODUIT.VALIDE_STEP1, isActive: true },
       { where: { id, statutValidation: STATUT_VALIDATION_PRODUIT.EN_ATTENTE } }
     );
 
