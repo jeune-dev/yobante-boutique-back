@@ -14,6 +14,12 @@
       "port": 5000
     },
     {
+      "name": "yobante-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "C:\\Users\\vPro\\Desktop\\fait_maison\\yobante-admin"],
+      "port": 5173
+    },
+    {
       "name": "thiam-gold",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5566", "--directory", "C:\\Users\\User\\Desktop\\Mes_Projets\\Projet_Personnel\\THIAM_GOLD"],
