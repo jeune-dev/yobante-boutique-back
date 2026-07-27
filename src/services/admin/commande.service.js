@@ -33,8 +33,16 @@ class GestionCommandeService {
     const { count, rows } = await Commande.findAndCountAll({
       where,
       include: [
-        { model: User, as: 'user', attributes: ['id', 'nom', 'prenom', 'email'] },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'nom', 'prenom', 'email', 'telephone'],
+        },
         { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+        // Le tableau de bord doit pouvoir montrer où et comment livrer, et si
+        // le règlement est attendu à la livraison, sans ouvrir chaque fiche.
+        { model: Adresse, as: 'adresse' },
+        { model: Paiement, as: 'paiement' },
       ],
       order: [['createdAt', 'DESC']],
       limit: l,

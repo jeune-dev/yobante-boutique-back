@@ -35,7 +35,10 @@ class CommandeService {
    * Un advisory lock PostgreSQL par userId empêche deux commandes simultanées
    * du même utilisateur. La décrémention de stock est atomique (WHERE stock >= quantite).
    */
-  static async passerCommande(userId, { adresseId, note, methode, items = [] }) {
+  static async passerCommande(
+    userId,
+    { adresseId, note, methode, dateLivraisonSouhaitee, items = [] }
+  ) {
     // ── Advisory lock : un seul passage de commande à la fois par utilisateur ──
     const lockKey = await acquire(`commande:${userId}`);
     try {
@@ -88,6 +91,7 @@ class CommandeService {
             adresseId,
             montantTotal: round2(lignesTotal + fraisLivraison),
             fraisLivraison,
+            dateLivraisonSouhaitee: dateLivraisonSouhaitee || null,
             note,
           },
           { transaction: t }
@@ -135,6 +139,7 @@ class CommandeService {
         const commandeComplete = await Commande.findByPk(commande.id, {
           include: [
             { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+            { model: Adresse, as: 'adresse' },
             { model: Paiement, as: 'paiement' },
           ],
         });
@@ -172,7 +177,11 @@ class CommandeService {
 
     const { count, rows } = await Commande.findAndCountAll({
       where: { userId },
-      include: [{ model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] }],
+      include: [
+        { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+        { model: Adresse, as: 'adresse' },
+        { model: Paiement, as: 'paiement' },
+      ],
       order: [['createdAt', 'DESC']],
       limit: l,
       offset,
@@ -230,7 +239,15 @@ class CommandeService {
       );
       await commande.update({ statut: STATUT_COMMANDE.ANNULEE }, { transaction: t });
       await t.commit();
-      return { success: true, message: 'Commande annulée avec succès', commande };
+
+      const commandeComplete = await Commande.findByPk(commandeId, {
+        include: [
+          { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+          { model: Adresse, as: 'adresse' },
+          { model: Paiement, as: 'paiement' },
+        ],
+      });
+      return { success: true, message: 'Commande annulée avec succès', commande: commandeComplete };
     } catch (err) {
       await t.rollback();
       throw err;
@@ -254,6 +271,7 @@ class CommandeService {
     const commandeComplete = await Commande.findByPk(commandeId, {
       include: [
         { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+        { model: Adresse, as: 'adresse' },
         { model: Paiement, as: 'paiement' },
       ],
     });
@@ -299,6 +317,7 @@ class CommandeService {
       const commandeComplete = await Commande.findByPk(commandeId, {
         include: [
           { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+          { model: Adresse, as: 'adresse' },
           { model: Paiement, as: 'paiement' },
         ],
       });

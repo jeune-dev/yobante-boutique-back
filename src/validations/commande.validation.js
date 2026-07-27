@@ -14,6 +14,8 @@ const passerCommandeSchema = Joi.object({
       })
     )
     .optional(),
+  // Date souhaitée par le client. Indicative, donc facultative.
+  dateLivraisonSouhaitee: Joi.date().iso().allow(null).optional(),
   note: Joi.string().trim().max(500).allow('', null).optional(),
 });
 

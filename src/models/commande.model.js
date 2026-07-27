@@ -43,6 +43,12 @@ const Commande = sequelize.define(
       type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0,
     },
+    // Date souhaitée par le client, saisie au moment de commander. Indicative :
+    // elle guide la préparation sans engager de créneau ferme.
+    dateLivraisonSouhaitee: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
     note: {
       type: DataTypes.TEXT,
       allowNull: true,
