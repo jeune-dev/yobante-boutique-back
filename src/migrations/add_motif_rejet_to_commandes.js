@@ -4,14 +4,18 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.sequelize.transaction(async (transaction) => {
-      // Ajouter la colonne motifRejet (si elle n'existe pas)
-      const tableInfo = await queryInterface.describeTable('commandes');
-      if (!tableInfo.motifRejet) {
+      // Ajouter la colonne motifRejet (ignorer si existe déjà)
+      try {
         await queryInterface.addColumn('commandes', 'motifRejet', {
           type: Sequelize.TEXT,
           allowNull: true,
           transaction,
         });
+      } catch (error) {
+        // Ignorer l'erreur si la colonne existe déjà
+        if (!error.message.includes('already exists')) {
+          throw error;
+        }
       }
 
       // Modifier l'enum du statut pour ajouter 'rejetee' (ignorer si existe déjà)
