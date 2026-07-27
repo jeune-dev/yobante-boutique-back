@@ -3,48 +3,45 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.sequelize.transaction(async (transaction) => {
-      // Ajouter la colonne motifRejet (ignorer si existe déjà)
-      try {
-        await queryInterface.addColumn('commandes', 'motifRejet', {
-          type: Sequelize.TEXT,
-          allowNull: true,
-          transaction,
-        });
-      } catch (error) {
-        // Ignorer l'erreur si la colonne existe déjà
-        if (!error.message.includes('already exists')) {
-          throw error;
-        }
-      }
+    // Vérifier si la colonne motifRejet existe
+    const columns = await queryInterface.sequelize.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name='commandes' AND column_name='motifRejet'`,
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
 
-      // Modifier l'enum du statut pour ajouter 'rejetee' (ignorer si existe déjà)
-      try {
-        await queryInterface.sequelize.query(
-          `ALTER TYPE "enum_commandes_statut" ADD VALUE 'rejetee'`,
-          { transaction }
-        );
-      } catch (error) {
-        // Ignorer l'erreur si la valeur existe déjà
-        if (!error.message.includes('already exists')) {
-          throw error;
-        }
+    // Ajouter la colonne si elle n'existe pas
+    if (columns.length === 0) {
+      await queryInterface.addColumn('commandes', 'motifRejet', {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      });
+    }
+
+    // Ajouter la valeur enum 'rejetee' (ignorer si existe déjà)
+    try {
+      await queryInterface.sequelize.query(
+        `ALTER TYPE "enum_commandes_statut" ADD VALUE 'rejetee'`
+      );
+    } catch (error) {
+      // Ignorer l'erreur si la valeur existe déjà
+      if (!error.message.includes('already exists')) {
+        throw error;
       }
-    });
+    }
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.sequelize.transaction(async (transaction) => {
-      // Supprimer la colonne motifRejet
-      const tableInfo = await queryInterface.describeTable('commandes');
-      if (tableInfo.motifRejet) {
-        await queryInterface.removeColumn('commandes', 'motifRejet', {
-          transaction,
-        });
-      }
+    // Supprimer la colonne motifRejet si elle existe
+    const columns = await queryInterface.sequelize.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name='commandes' AND column_name='motifRejet'`,
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
 
-      // Note: On ne peut pas supprimer une valeur d'enum en PostgreSQL
-      // donc on laisse 'rejetee' dans l'enum (inoffensif)
-    });
+    if (columns.length > 0) {
+      await queryInterface.removeColumn('commandes', 'motifRejet');
+    }
+
+    // Note: On ne peut pas supprimer une valeur d'enum en PostgreSQL
+    // donc on laisse 'rejetee' dans l'enum (inoffensif)
   },
 };
