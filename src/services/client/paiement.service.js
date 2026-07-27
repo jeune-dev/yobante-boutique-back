@@ -55,11 +55,8 @@ class PaiementClientService {
       derniereErreur: null,
     });
 
-    // Paiement à la livraison : rien à encaisser en ligne, la commande peut
-    // avancer immédiatement.
-    if (resultat.confirmerCommande && commande.statut === STATUT_COMMANDE.EN_ATTENTE) {
-      await commande.update({ statut: STATUT_COMMANDE.VALIDEE });
-    }
+    // Note: La commande reste "en_attente" jusqu'à la validation manuelle par l'admin.
+    // Le paiement n'avance pas automatiquement le statut.
 
     return {
       success: true,
@@ -130,12 +127,8 @@ class PaiementClientService {
           { statut: STATUT_PAIEMENT.SUCCES, payeAt: new Date(), derniereErreur: null },
           { transaction: t }
         );
-        // Un paiement abouti fait avancer la commande, sans écraser un état
-        // plus avancé (expédiée, livrée) ni ressusciter une commande annulée.
-        const commande = await Commande.findByPk(paiement.commandeId, { transaction: t });
-        if (commande && commande.statut === STATUT_COMMANDE.EN_ATTENTE) {
-          await commande.update({ statut: STATUT_COMMANDE.VALIDEE }, { transaction: t });
-        }
+        // Note: La commande reste "en_attente" jusqu'à la validation manuelle par l'admin.
+        // Le paiement réussi ne change pas automatiquement le statut de la commande.
       } else {
         await paiement.update(
           { statut: STATUT_PAIEMENT.ECHOUE, derniereErreur: 'Paiement refusé par le fournisseur' },
