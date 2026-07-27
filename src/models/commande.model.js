@@ -29,7 +29,8 @@ const Commande = sequelize.define(
         'en_preparation',
         'expediee',
         'livree',
-        'annulee'
+        'annulee',
+        'rejetee'
       ),
       defaultValue: 'en_attente',
       allowNull: false,
@@ -47,6 +48,10 @@ const Commande = sequelize.define(
       allowNull: true,
     },
     noteAdmin: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    motifRejet: {
       type: DataTypes.TEXT,
       allowNull: true,
     },

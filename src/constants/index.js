@@ -15,6 +15,7 @@ const STATUT_COMMANDE = Object.freeze({
   EXPEDIEE: 'expediee',
   LIVREE: 'livree',
   ANNULEE: 'annulee',
+  REJETEE: 'rejetee',
 });
 
 const STATUT_PAIEMENT = Object.freeze({

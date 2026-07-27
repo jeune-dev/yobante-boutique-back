@@ -236,6 +236,79 @@ class CommandeService {
       throw err;
     }
   }
+
+  static async validerCommande(commandeId) {
+    const commande = await Commande.findByPk(commandeId);
+    if (!commande) {
+      return { success: false, status: 404, message: 'Commande introuvable' };
+    }
+    if (commande.statut !== STATUT_COMMANDE.EN_ATTENTE) {
+      return {
+        success: false,
+        status: 400,
+        message: 'Seule une commande en attente peut être validée',
+      };
+    }
+
+    await commande.update({ statut: STATUT_COMMANDE.VALIDEE });
+    const commandeComplete = await Commande.findByPk(commandeId, {
+      include: [
+        { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+        { model: Paiement, as: 'paiement' },
+      ],
+    });
+
+    return { success: true, message: 'Commande validée avec succès', commande: commandeComplete };
+  }
+
+  static async rejeterCommande(commandeId, { motif } = {}) {
+    const commande = await Commande.findByPk(commandeId, {
+      include: [{ model: CommandeItem, as: 'items' }],
+    });
+
+    if (!commande) {
+      return { success: false, status: 404, message: 'Commande introuvable' };
+    }
+    if (commande.statut !== STATUT_COMMANDE.EN_ATTENTE) {
+      return {
+        success: false,
+        status: 400,
+        message: 'Seule une commande en attente peut être rejetée',
+      };
+    }
+
+    const t = await sequelize.transaction();
+    try {
+      // Restaurer le stock des produits rejetés
+      await Promise.all(
+        commande.items.map((item) =>
+          Produit.increment('stock', {
+            by: item.quantite,
+            where: { id: item.produitId },
+            transaction: t,
+          })
+        )
+      );
+
+      await commande.update(
+        { statut: STATUT_COMMANDE.REJETEE, motifRejet: motif || null },
+        { transaction: t }
+      );
+      await t.commit();
+
+      const commandeComplete = await Commande.findByPk(commandeId, {
+        include: [
+          { model: CommandeItem, as: 'items', include: [{ model: Produit, as: 'produit' }] },
+          { model: Paiement, as: 'paiement' },
+        ],
+      });
+
+      return { success: true, message: 'Commande rejetée avec succès', commande: commandeComplete };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+  }
 }
 
 module.exports = CommandeService;

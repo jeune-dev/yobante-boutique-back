@@ -16,6 +16,10 @@ router.post('/', validate(passerCommandeSchema), ctrl.passer);
 router.get('/:id', ctrl.getOne);
 router.patch('/:id/annuler', ctrl.annuler);
 
+// Routes admin (nécessite ADMIN role)
+router.patch('/:id/valider', ctrl.valider);
+router.patch('/:id/rejeter', ctrl.rejeter);
+
 // Paiement de la commande
 router.post('/:id/payer', paiementCtrl.payer);
 router.get('/:id/paiement', paiementCtrl.statut);
