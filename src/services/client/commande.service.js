@@ -35,18 +35,33 @@ class CommandeService {
    * Un advisory lock PostgreSQL par userId empêche deux commandes simultanées
    * du même utilisateur. La décrémention de stock est atomique (WHERE stock >= quantite).
    */
-  static async passerCommande(userId, { adresseId, note, methode }) {
+  static async passerCommande(userId, { adresseId, note, methode, items = [] }) {
     // ── Advisory lock : un seul passage de commande à la fois par utilisateur ──
     const lockKey = await acquire(`commande:${userId}`);
     try {
       const adresse = await Adresse.findOne({ where: { id: adresseId, userId } });
       if (!adresse) return { success: false, message: 'Adresse introuvable' };
 
-      // Récupère le panier avec les produits
-      const lignesPanier = await Panier.findAll({
-        where: { userId },
-        include: [{ model: Produit, as: 'produit' }],
-      });
+      // Le panier est passé du client (stocké localement), pas de la BD
+      let lignesPanier = [];
+
+      // Si items sont envoyés du client, les utiliser
+      if (items && items.length > 0) {
+        lignesPanier = await Promise.all(
+          items.map(async (item) => {
+            const produit = await Produit.findByPk(item.produitId);
+            if (!produit) throw new Error(`Produit ${item.produitId} introuvable`);
+            return { produitId: item.produitId, quantite: item.quantite, produit };
+          })
+        );
+      } else {
+        // Fallback : chercher dans la table Panier (pour compatibilité)
+        lignesPanier = await Panier.findAll({
+          where: { userId },
+          include: [{ model: Produit, as: 'produit' }],
+        });
+      }
+
       if (!lignesPanier.length) return { success: false, message: 'Votre panier est vide' };
 
       for (const ligne of lignesPanier) {
