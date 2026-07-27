@@ -42,11 +42,10 @@ class CommandeService {
       const adresse = await Adresse.findOne({ where: { id: adresseId, userId } });
       if (!adresse) return { success: false, message: 'Adresse introuvable' };
 
-      // SELECT FOR UPDATE sur le panier : sérialise les lectures concurrentes
+      // Récupère le panier avec les produits
       const lignesPanier = await Panier.findAll({
         where: { userId },
         include: [{ model: Produit, as: 'produit' }],
-        lock: true,
       });
       if (!lignesPanier.length) return { success: false, message: 'Votre panier est vide' };
 
