@@ -14,12 +14,12 @@ exports.getById = asyncHandler(async (req, res) => {
   return ok(res, { rayon: result.rayon }, 'Rayon récupéré');
 });
 exports.creer = asyncHandler(async (req, res) => {
-  const result = await RayonService.creer(req.body);
+  const result = await RayonService.creer(req.body, req.file);
   if (!result.success) throw new BadRequestError(result.message);
   return created(res, { rayon: result.rayon }, result.message);
 });
 exports.modifier = asyncHandler(async (req, res) => {
-  const result = await RayonService.modifier(req.params.id, req.body);
+  const result = await RayonService.modifier(req.params.id, req.body, req.file);
   if (!result.success) throw new NotFoundError(result.message);
   return ok(res, { rayon: result.rayon }, result.message);
 });
@@ -34,12 +34,12 @@ exports.listerSousRayons = asyncHandler(async (req, res) => {
   return ok(res, result, 'Sous-rayons récupérés');
 });
 exports.creerSousRayon = asyncHandler(async (req, res) => {
-  const result = await RayonService.creerSousRayon(req.params.rayonId, req.body);
+  const result = await RayonService.creerSousRayon(req.params.rayonId, req.body, req.file);
   if (!result.success) throw new BadRequestError(result.message);
   return created(res, { sousRayon: result.sousRayon }, result.message);
 });
 exports.modifierSousRayon = asyncHandler(async (req, res) => {
-  const result = await RayonService.modifierSousRayon(req.params.id, req.body);
+  const result = await RayonService.modifierSousRayon(req.params.id, req.body, req.file);
   if (!result.success) throw new NotFoundError(result.message);
   return ok(res, { sousRayon: result.sousRayon }, result.message);
 });

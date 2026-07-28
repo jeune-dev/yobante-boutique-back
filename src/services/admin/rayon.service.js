@@ -2,6 +2,7 @@
 const { Op } = require('sequelize');
 const { Rayon, SousRayon } = require('../../models');
 const paginate = require('../../utils/paginate');
+const { uploadImage } = require('../upload.service');
 
 function toSlug(str) {
   return str
@@ -51,18 +52,29 @@ class RayonService {
     return { success: true, rayon };
   }
 
-  static async creer({ nom, description, image }) {
+  static async creer({ nom, description, image }, file) {
     const slug = toSlug(nom);
     const exist = await Rayon.findOne({ where: { slug } });
     if (exist) return { success: false, message: 'Un rayon avec ce nom existe déjà' };
-    const rayon = await Rayon.create({ nom, slug, description, image });
+    // Le visuel est envoyé en pièce jointe depuis le tableau de bord, déjà
+    // recadré au format carré de la vignette mobile.
+    const visuel = file ? await uploadImage(file.buffer, file.originalname, 'rayons') : image;
+    const rayon = await Rayon.create({ nom, slug, description, image: visuel });
     return { success: true, message: 'Rayon créé', rayon };
   }
 
-  static async modifier(id, data) {
+  static async modifier(id, data, file) {
     const rayon = await Rayon.findByPk(id);
     if (!rayon) return { success: false, message: 'Rayon introuvable' };
     if (data.nom) data.slug = toSlug(data.nom);
+    if (file) {
+      data.image = await uploadImage(file.buffer, file.originalname, 'rayons');
+    } else if (data.image === '') {
+      // Champ vidé explicitement : on retire le visuel plutôt que d'écrire ''.
+      data.image = null;
+    } else if (data.image === undefined) {
+      delete data.image;
+    }
     await rayon.update(data);
     return { success: true, message: 'Rayon modifié', rayon };
   }
@@ -94,20 +106,32 @@ class RayonService {
     };
   }
 
-  static async creerSousRayon(rayonId, { nom, description, image }) {
+  static async creerSousRayon(rayonId, { nom, description, image }, file) {
     const rayon = await Rayon.findByPk(rayonId);
     if (!rayon) return { success: false, message: 'Rayon introuvable' };
     const slug = toSlug(nom);
     const exist = await SousRayon.findOne({ where: { slug } });
     if (exist) return { success: false, message: 'Un sous-rayon avec ce nom existe déjà' };
-    const sousRayon = await SousRayon.create({ nom, slug, description, image, rayonId });
+    const visuel = file ? await uploadImage(file.buffer, file.originalname, 'rayons') : image;
+    const sousRayon = await SousRayon.create({
+      nom,
+      slug,
+      description,
+      image: visuel,
+      rayonId,
+    });
     return { success: true, message: 'Sous-rayon créé', sousRayon };
   }
 
-  static async modifierSousRayon(id, data) {
+  static async modifierSousRayon(id, data, file) {
     const sr = await SousRayon.findByPk(id);
     if (!sr) return { success: false, message: 'Sous-rayon introuvable' };
     if (data.nom) data.slug = toSlug(data.nom);
+    if (file) {
+      data.image = await uploadImage(file.buffer, file.originalname, 'rayons');
+    } else if (data.image === undefined) {
+      delete data.image;
+    }
     await sr.update(data);
     return { success: true, message: 'Sous-rayon modifié', sousRayon: sr };
   }
