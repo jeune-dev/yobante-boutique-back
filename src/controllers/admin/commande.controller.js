@@ -62,3 +62,12 @@ exports.getKpi = asyncHandler(async (req, res) => {
   const result = await GestionCommandeService.getKpiCommandes();
   return ok(res, result.kpi, 'KPI commandes');
 });
+
+exports.modifierStatut = asyncHandler(async (req, res) => {
+  const { statut } = req.body;
+  if (!statut) throw new BadRequestError('Le statut est requis');
+
+  const result = await GestionCommandeService.modifierStatut(req.params.id, statut);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { commande: result.commande }, result.message);
+});

@@ -121,6 +121,29 @@ class GestionPaiementService {
 
     return { success: true, total: Math.round((total || 0) * 100) / 100, nbTransactions };
   }
+
+  static async modifierStatut(id, statut) {
+    const statutValides = ['en_attente', 'succes', 'echoue', 'rembourse'];
+    if (!statutValides.includes(statut)) {
+      return {
+        success: false,
+        message: `Statut invalide. Valeurs acceptées: ${statutValides.join(', ')}`,
+      };
+    }
+
+    const paiement = await Paiement.findByPk(id);
+    if (!paiement) {
+      return { success: false, message: 'Paiement introuvable' };
+    }
+
+    const updateData = { statut };
+    if (statut === 'succes' && paiement.statut !== 'succes') {
+      updateData.payeAt = new Date();
+    }
+
+    await paiement.update(updateData);
+    return { success: true, message: `Statut modifié en ${statut}`, paiement };
+  }
 }
 
 module.exports = GestionPaiementService;

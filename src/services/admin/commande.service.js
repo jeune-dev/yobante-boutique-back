@@ -215,6 +215,36 @@ class GestionCommandeService {
 
     return { success: true, csv };
   }
+
+  static async modifierStatut(id, statut) {
+    const statutValides = [
+      'en_attente',
+      'validee',
+      'en_preparation',
+      'expediee',
+      'livree',
+      'annulee',
+    ];
+    if (!statutValides.includes(statut)) {
+      return {
+        success: false,
+        message: `Statut invalide. Valeurs acceptées: ${statutValides.join(', ')}`,
+      };
+    }
+
+    const commande = await Commande.findByPk(id, { include: [{ model: User, as: 'user' }] });
+    if (!commande) {
+      return { success: false, message: 'Commande introuvable' };
+    }
+
+    await commande.update({ statut });
+
+    if (commande.user) {
+      await sendCommandeStatut(commande.user.email, commande, statut);
+    }
+
+    return { success: true, message: `Statut modifié en ${statut}`, commande };
+  }
 }
 
 module.exports = GestionCommandeService;

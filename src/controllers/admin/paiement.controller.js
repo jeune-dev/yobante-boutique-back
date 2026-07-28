@@ -41,3 +41,12 @@ exports.rembourser = asyncHandler(async (req, res) => {
   if (!result.success) throw new BadRequestError(result.message);
   return ok(res, { paiement: result.paiement }, result.message);
 });
+
+exports.modifierStatut = asyncHandler(async (req, res) => {
+  const { statut } = req.body;
+  if (!statut) throw new BadRequestError('Le statut est requis');
+
+  const result = await GestionPaiementService.modifierStatut(req.params.id, statut);
+  if (!result.success) throw new BadRequestError(result.message);
+  return ok(res, { paiement: result.paiement }, result.message);
+});

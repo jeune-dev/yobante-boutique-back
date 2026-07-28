@@ -248,7 +248,17 @@ class GestionVendeurService {
       await ProfilVendeur.update({ isActive: newState }, { where: { userId: id }, transaction: t });
       await t.commit();
 
-      return { success: true, message: `Vendeur ${newState ? 'activé' : 'désactivé'}` };
+      const updatedUser = await User.findOne({
+        where: { id },
+        attributes: { exclude: ['password'] },
+        include: [{ model: ProfilVendeur, as: 'profilVendeur' }],
+      });
+
+      return {
+        success: true,
+        message: `Vendeur ${newState ? 'activé' : 'désactivé'}`,
+        user: updatedUser,
+      };
     } catch (err) {
       await t.rollback();
       throw err;

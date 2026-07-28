@@ -7,5 +7,6 @@ router.get('/revenus-total', adminMiddleware, ctrl.getRevenusTotal);
 router.get('/:id', adminMiddleware, ctrl.getOne);
 router.patch('/:id/confirmer', adminMiddleware, ctrl.confirmer);
 router.patch('/:id/rembourser', adminMiddleware, ctrl.rembourser);
+router.patch('/:id/statut', adminMiddleware, ctrl.modifierStatut);
 
 module.exports = router;
